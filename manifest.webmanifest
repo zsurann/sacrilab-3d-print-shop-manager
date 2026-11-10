@@ -1,0 +1,20 @@
+{
+  "name": "Sacrilab 3D Print Shop Manager",
+  "short_name": "Sacrilab",
+  "description": "Selezione automatica dei modelli 3D più vendibili da MakerWorld e pubblicazione su Telegram.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "lang": "it",
+  "background_color": "#0e0d16",
+  "theme_color": "#0e0d16",
+  "categories": ["business", "productivity", "shopping"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

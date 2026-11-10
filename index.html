@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Sacrilab 3D Print Shop Manager</title>
+  <meta name="description" content="Selezione automatica dei modelli 3D più vendibili da MakerWorld e pubblicazione su Telegram." />
+  <meta name="theme-color" content="#0e0d16" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#f6f5fa" media="(prefers-color-scheme: light)" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Sacrilab" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="icons/favicon.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true"></div>
+      <div class="brand-text">
+        <strong>Sacrilab</strong>
+        <span>3D Print Shop Manager</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="btn-refresh" title="Aggiorna catalogo" aria-label="Aggiorna catalogo">
+        <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-4M4 4v4h4M4 13a8 8 0 0 0 14.9 4M20 20v-4h-4"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-settings" title="Impostazioni" aria-label="Impostazioni">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="hero-text">
+        <h1>Scegli, prezza, <span class="grad">pubblica.</span></h1>
+        <p id="hero-sub">I modelli più vendibili di MakerWorld, selezionati per te.</p>
+      </div>
+      <div class="stats" id="stats">
+        <div class="stat" data-k="pending"><b>0</b><span>Da valutare</span></div>
+        <div class="stat" data-k="published"><b>0</b><span>Pubblicati</span></div>
+        <div class="stat" data-k="discarded"><b>0</b><span>Scartati</span></div>
+      </div>
+    </section>
+
+    <div class="setup-banner" id="setup-banner" hidden>
+      <div>
+        <strong>Collega il bot Telegram</strong>
+        <span>Inserisci token e chat ID per poter pubblicare i prodotti.</span>
+      </div>
+      <button class="btn btn-primary btn-sm" id="banner-setup">Configura</button>
+    </div>
+
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" class="tab active" data-view="pending">Da valutare <em data-count="pending">0</em></button>
+      <button role="tab" class="tab" data-view="published">Pubblicati <em data-count="published">0</em></button>
+      <button role="tab" class="tab" data-view="discarded">Scartati <em data-count="discarded">0</em></button>
+      <span class="tab-indicator" aria-hidden="true"></span>
+    </nav>
+
+    <div class="toolbar">
+      <label class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" id="search" placeholder="Cerca un articolo…" autocomplete="off" />
+      </label>
+      <div class="select-wrap">
+        <select id="sort" aria-label="Ordina">
+          <option value="score">Più vendibili</option>
+          <option value="downloads">Più scaricati</option>
+          <option value="likes">Più apprezzati</option>
+          <option value="prints">Più stampati</option>
+          <option value="recent">Più recenti</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="chips" id="chips" role="list"></div>
+
+    <section class="grid" id="grid" aria-live="polite"></section>
+
+    <div class="empty" id="empty" hidden>
+      <div class="empty-art" aria-hidden="true"></div>
+      <h2 id="empty-title">Tutto fatto!</h2>
+      <p id="empty-text">Non ci sono articoli da valutare.</p>
+    </div>
+
+    <footer class="foot" id="foot"></footer>
+  </main>
+
+  <!-- Settings sheet -->
+  <div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
+  <aside class="sheet" id="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="settings-title">Impostazioni</h2>
+      <button class="icon-btn" data-close aria-label="Chiudi"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <form class="sheet-body" id="settings-form" autocomplete="off">
+      <h3>Bot Telegram</h3>
+      <p class="hint">Il bot (<a href="https://t.me/FlashShoppBot" target="_blank" rel="noopener">@FlashShoppBot</a>) invia la foto con didascalia «titolo, prezzo€» nella chat indicata. Il token resta salvato solo su questo dispositivo.</p>
+      <label class="field">
+        <span>Token del bot</span>
+        <div class="field-row">
+          <input type="password" id="tg-token" placeholder="123456789:AA…" spellcheck="false" />
+          <button type="button" class="btn btn-ghost btn-sm" id="toggle-token">Mostra</button>
+        </div>
+      </label>
+      <label class="field">
+        <span>Chat ID di destinazione</span>
+        <div class="field-row">
+          <input type="text" id="tg-chat" placeholder="es. 123456789 oppure @miocanale" spellcheck="false" />
+          <button type="button" class="btn btn-ghost btn-sm" id="find-chat">Trova</button>
+        </div>
+        <small class="hint">Scrivi un messaggio qualsiasi al bot su Telegram, poi premi «Trova».</small>
+      </label>
+      <div class="chat-list" id="chat-list" hidden></div>
+      <label class="field">
+        <span>Formato didascalia</span>
+        <input type="text" id="tg-format" placeholder="{titolo}, {prezzo}€" />
+        <small class="hint">Variabili: {titolo}, {prezzo}, {link}</small>
+      </label>
+      <div class="sheet-actions">
+        <button type="button" class="btn btn-ghost" id="test-tg">Invia messaggio di prova</button>
+        <button type="submit" class="btn btn-primary">Salva</button>
+      </div>
+
+      <h3>Catalogo</h3>
+      <label class="field">
+        <span>URL dati (opzionale)</span>
+        <input type="url" id="data-url" placeholder="data/products.json" spellcheck="false" />
+        <small class="hint">Lascia vuoto per usare il catalogo aggiornato automaticamente da GitHub Actions.</small>
+      </label>
+      <div class="sheet-actions wrap">
+        <button type="button" class="btn btn-ghost" id="export-state">Esporta stato</button>
+        <label class="btn btn-ghost" for="import-state">Importa stato<input type="file" id="import-state" accept="application/json" hidden /></label>
+        <button type="button" class="btn btn-danger-ghost" id="reset-state">Ripristina tutto</button>
+      </div>
+    </form>
+  </aside>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" hidden>
+    <img alt="" id="lightbox-img" />
+    <div class="lightbox-cap" id="lightbox-cap"></div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="assertive"></div>
+
+  <template id="card-tpl">
+    <article class="card">
+      <div class="card-media">
+        <div class="skeleton"></div>
+        <img loading="lazy" decoding="async" alt="" referrerpolicy="no-referrer" />
+        <span class="badge-score" title="Punteggio di vendibilità"></span>
+        <span class="badge-cat"></span>
+        <a class="badge-link" target="_blank" rel="noopener" title="Apri su MakerWorld" aria-label="Apri su MakerWorld">
+          <svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>
+        </a>
+      </div>
+      <div class="card-body">
+        <textarea class="card-title" rows="1" spellcheck="true" aria-label="Titolo"></textarea>
+        <div class="card-meta"></div>
+        <div class="card-reasons"></div>
+        <div class="card-actions"></div>
+      </div>
+    </article>
+  </template>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

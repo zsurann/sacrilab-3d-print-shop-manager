@@ -1,0 +1,12 @@
+{
+  "name": "sacrilab-makerworld-scraper",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "scrape": "node scrape.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "playwright": "1.48.2"
+  }
+}
