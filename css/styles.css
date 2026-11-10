@@ -250,6 +250,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .card-meta svg { width: 14px; height: 14px; }
 .card-reasons { display: flex; flex-wrap: wrap; gap: 6px; }
 .card-reasons span { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-2); }
+.card-reasons span.warn { background: rgba(250, 204, 21, 0.14); color: #eab308; }
 .card-reasons span.lic { background: var(--surface-2); color: var(--text-2); }
 .card-actions { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
 

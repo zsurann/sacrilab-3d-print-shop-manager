@@ -1,5 +1,7 @@
 // Estrazione, normalizzazione e punteggio di vendibilità dei modelli MakerWorld.
-import { BASE, LOCALE, CATEGORIES, IP_BLOCKLIST, LOW_SELLABILITY, HIGH_SELLABILITY, LIMITS } from './config.mjs';
+import {
+  BASE, LOCALE, CATEGORIES, IP_BLOCKLIST, LOW_SELLABILITY, HIGH_SELLABILITY, LIMITS, FILTERS, LOW_SELLABILITY_PENALTY,
+} from './config.mjs';
 
 const num = (...v) => {
   for (const x of v) {
@@ -113,15 +115,19 @@ export function categorize(d) {
 }
 
 /** Filtra, assegna punteggio e seleziona i modelli più vendibili bilanciando le categorie. */
-export function rank(designs, { now = Date.now(), limits = LIMITS } = {}) {
+export function rank(designs, { now = Date.now(), limits = LIMITS, filters = FILTERS } = {}) {
   const pool = [];
   const rejected = { ip: 0, low: 0, license: 0, unpopular: 0 };
   for (const d of designs) {
     const text = textOf(d);
-    if (anyWord(text, IP_BLOCKLIST)) { rejected.ip++; continue; }
-    if (anyWord(text, LOW_SELLABILITY)) { rejected.low++; continue; }
-    if (!limits.allowNonCommercial && isNonCommercial(d.license)) { rejected.license++; continue; }
-    if (d.stats.downloads < limits.minDownloads && d.stats.likes < limits.minDownloads / 3) { rejected.unpopular++; continue; }
+    const flags = [];
+    const isIP = anyWord(text, IP_BLOCKLIST);
+    const isLow = anyWord(text, LOW_SELLABILITY);
+    const isNC = isNonCommercial(d.license);
+    if (isIP) { if (filters.excludeIP) { rejected.ip++; continue; } flags.push('Marchio di terzi'); }
+    if (isLow && filters.excludeLowSellability) { rejected.low++; continue; }
+    if (isNC) { if (filters.excludeNonCommercial) { rejected.license++; continue; } flags.push('Licenza non commerciale'); }
+    if (d.stats.downloads < (filters.minDownloads || 0)) { rejected.unpopular++; continue; }
 
     const { downloads, prints, likes, collections, comments } = d.stats;
     const reasons = [];
@@ -146,8 +152,9 @@ export function rank(designs, { now = Date.now(), limits = LIMITS } = {}) {
       if (anyWord(text, rule.words)) { bonus += rule.bonus; reasons.push(rule.reason); }
     }
     raw += Math.min(10, bonus);
+    if (isLow) raw -= LOW_SELLABILITY_PENALTY;
 
-    pool.push({ ...d, category: categorize(d), raw, reasons: [...new Set(reasons)] });
+    pool.push({ ...d, category: categorize(d), raw, flags, reasons: [...new Set(reasons)] });
   }
 
   if (!pool.length) return { items: [], rejected };
@@ -168,9 +175,9 @@ export function rank(designs, { now = Date.now(), limits = LIMITS } = {}) {
   // Bilanciamento: i migliori di ogni categoria, poi riempimento per punteggio globale.
   const picked = new Map();
   const seenTitles = new Set();
-  const key = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').slice(0, 5).join(' ');
+  const key = (t) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(' ').slice(0, 5).join(' ');
   const take = (x) => {
-    const k = key(x.title);
+    const k = key(x.title) || `#${x.id}`;
     if (picked.has(x.id) || seenTitles.has(k)) return false;
     picked.set(x.id, x); seenTitles.add(k); return true;
   };

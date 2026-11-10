@@ -1,11 +1,8 @@
-name: Pubblica PWA su GitHub Pages
+name: Pubblica PWA su GitHub Pages (alternativa a Cloudflare)
 
+# Il sito è pubblicato su Cloudflare Pages, che si aggiorna da solo a ogni commit.
+# Questo workflow resta disponibile solo come alternativa manuale.
 on:
-  push:
-    branches: [main]
-  workflow_run:
-    workflows: ['Aggiorna catalogo MakerWorld']
-    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -19,7 +16,6 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -31,8 +27,7 @@ jobs:
 
       - name: Prepara sito
         run: |
-          mkdir _site
-          cp -r index.html manifest.webmanifest sw.js css js icons data _site/
+          bash scripts/build-site.sh
           touch _site/.nojekyll
 
       - uses: actions/configure-pages@v5

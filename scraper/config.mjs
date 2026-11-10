@@ -69,8 +69,8 @@ export const DISCOVERY_PATHS = [
   `/${LOCALE}/3d-models`,
 ];
 
-// Parole che indicano proprietà intellettuale di terzi: vendere stampe di questi modelli
-// espone a contestazioni per violazione di marchio/copyright → esclusi.
+// Parole che indicano proprietà intellettuale di terzi (marchi, personaggi).
+// Usate solo se FILTERS.excludeIP è attivo; altrimenti il modello mostra il badge «Marchio di terzi».
 export const IP_BLOCKLIST = [
   'pokemon', 'pokémon', 'pikachu', 'marvel', 'disney', 'star wars', 'mandalorian', 'baby yoda', 'grogu', 'harry potter',
   'hogwarts', 'nintendo', 'mario', 'zelda', 'sonic', 'minecraft', 'lego', 'batman', 'superman', 'spiderman', 'spider-man',
@@ -103,6 +103,17 @@ export const LIMITS = {
   scrollsPerPage: 4,        // quante volte scorrere ogni pagina per caricare altri risultati
   perCategory: 14,          // modelli massimi per categoria
   total: 140,               // modelli massimi nel catalogo
-  minDownloads: 150,        // soglia minima di popolarità
-  allowNonCommercial: false // escludi modelli con licenza "NonCommercial"
 };
+
+// Esclusioni: tutte disattivate, nessun articolo viene scartato a priori.
+// Metti `true` per riattivare un filtro.
+export const FILTERS = {
+  excludeIP: false,           // modelli con marchi/personaggi di terzi (IP_BLOCKLIST)
+  excludeLowSellability: false, // file di test, ricambi per stampanti… (LOW_SELLABILITY)
+  excludeNonCommercial: false,  // licenze "NonCommercial"
+  minDownloads: 0,              // soglia minima di download (0 = nessuna)
+};
+
+// Con i filtri disattivati, i modelli poco adatti alla vendita restano nel catalogo
+// ma ricevono una penalità di punteggio, così finiscono in fondo alla classifica.
+export const LOW_SELLABILITY_PENALTY = 6;

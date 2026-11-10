@@ -35,18 +35,36 @@ test('categorizza per parole intere', () => {
   assert.equal(c('Scattered thoughts'), 'altro'); // "cat" non deve combaciare
 });
 
-test('rank esclude IP, ricambi stampante e NC, ordina per punteggio', () => {
-  const designs = [...collectDesigns([
-    mk(1, 'Pikachu planter'),
-    mk(2, 'AMS spool holder'),
-    mk(3, 'Wall hook', { license: 'BY-NC' }),
-    mk(4, 'Headphone stand', { dl: 20000, likes: 4000, prints: 6000 }),
-    mk(5, 'Plant pot', { dl: 900, likes: 80, prints: 50 }),
-    mk(6, 'Tiny thing', { dl: 10, likes: 1, prints: 0 }),
-  ]).values()];
-  const { items, rejected } = rank(designs);
+const sample = () => [...collectDesigns([
+  mk(1, 'Pikachu planter'),
+  mk(2, 'AMS spool holder'),
+  mk(3, 'Wall hook', { license: 'BY-NC' }),
+  mk(4, 'Headphone stand', { dl: 20000, likes: 4000, prints: 6000 }),
+  mk(5, 'Plant pot', { dl: 900, likes: 80, prints: 50 }),
+  mk(6, 'Tiny thing', { dl: 10, likes: 1, prints: 0 }),
+]).values()];
+
+test('di default nessun articolo viene escluso, ma vengono segnalati', () => {
+  const { items, rejected } = rank(sample());
+  assert.equal(items.length, 6);
+  assert.deepEqual(rejected, { ip: 0, low: 0, license: 0, unpopular: 0 });
+  assert.equal(items[0].id, '4');
+  assert.equal(items[0].category, 'tech');
+  assert.ok(items[0].score <= 99);
+  assert.deepEqual(items.find((x) => x.id === '1').flags, ['Marchio di terzi']);
+  assert.deepEqual(items.find((x) => x.id === '3').flags, ['Licenza non commerciale']);
+  // i ricambi per stampanti sono penalizzati: stesse statistiche di "Wall hook" ma punteggio più basso
+  assert.ok(items.find((x) => x.id === '2').score < items.find((x) => x.id === '3').score);
+});
+
+test('i filtri si possono riattivare', () => {
+  const filters = { excludeIP: true, excludeLowSellability: true, excludeNonCommercial: true, minDownloads: 150 };
+  const { items, rejected } = rank(sample(), { filters });
   assert.deepEqual(items.map((x) => x.id), ['4', '5']);
   assert.deepEqual(rejected, { ip: 1, low: 1, license: 1, unpopular: 1 });
-  assert.ok(items[0].score > items[1].score && items[0].score <= 99);
-  assert.equal(items[0].category, 'tech');
+});
+
+test('titoli non latini non vengono scambiati per duplicati', () => {
+  const { items } = rank([...collectDesigns([mk(7, '收纳盒'), mk(8, '手机支架'), mk(9, '花瓶')]).values()]);
+  assert.equal(items.length, 3);
 });

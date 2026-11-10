@@ -1,7 +1,7 @@
 // Service worker: app shell cache-first, catalogo network-first, immagini stale-while-revalidate.
-const VERSION = 'sacrilab-v1.0.0';
+const VERSION = 'sacrilab-v1.1.0';
 const SHELL = [
-  './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
+  './', 'manifest.webmanifest', 'css/styles.css',
   'js/app.js', 'js/store.js', 'js/telegram.js',
   'icons/logo-white.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/favicon.png', 'icons/apple-touch-icon.png',
 ];
@@ -68,7 +68,7 @@ self.addEventListener('fetch', (e) => {
         const net = fetch(req).then((res) => {
           if (res.ok) c.put(req, res.clone());
           return res;
-        }).catch(() => hit || c.match('index.html'));
+        }).catch(() => hit || c.match('./'));
         if (hit) { e.waitUntil(net); return hit; }
         return net;
       }),

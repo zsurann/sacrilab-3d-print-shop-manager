@@ -184,7 +184,8 @@ function buildCard(it, i) {
     <span title="Stampe">${ICONS.print}${fmt(st.prints)}</span>
     ${it.author ? `<span title="Autore">di ${esc(it.author)}</span>` : ''}`;
 
-  const reasons = (it.reasons || []).slice(0, 3).map((r) => `<span>${esc(r)}</span>`);
+  const reasons = (it.flags || []).map((f) => `<span class="warn" title="Verifica prima di vendere">⚠️ ${esc(f)}</span>`);
+  reasons.push(...(it.reasons || []).slice(0, 3).map((r) => `<span>${esc(r)}</span>`));
   if (it.license) reasons.push(`<span class="lic" title="Licenza del modello">${esc(it.license)}</span>`);
   $('.card-reasons', card).innerHTML = reasons.join('');
 
@@ -241,8 +242,10 @@ async function onPublish(card, it) {
     toast('Configura prima il bot Telegram', 'err');
     return openSettings();
   }
+  if (card.dataset.busy) return;
   const title = $('.card-title', card).value.trim() || it.title;
   const btn = $('[data-act="publish"]', card);
+  card.dataset.busy = '1';
   btn.classList.add('loading');
   try {
     const caption = buildCaption(store.settings.format, { title, price, link: it.url });
@@ -255,11 +258,14 @@ async function onPublish(card, it) {
     renderCounts(); renderChips(); maybeEmpty();
   } catch (e) {
     btn.classList.remove('loading');
+    delete card.dataset.busy;
     toast(e.message || 'Errore durante la pubblicazione', 'err');
   }
 }
 
 async function onDiscard(card, it) {
+  if (card.dataset.busy) return;
+  card.dataset.busy = '1';
   store.markDiscarded(it.id);
   haptic(10);
   await removeCard(card, 'discard');
@@ -271,6 +277,8 @@ async function onDiscard(card, it) {
 }
 
 function onRestore(card, it) {
+  if (card.dataset.busy) return;
+  card.dataset.busy = '1';
   store.restore(it.id);
   removeCard(card, 'discard').then(() => { renderCounts(); renderChips(); maybeEmpty(); });
   toast('Articolo rimesso in valutazione', 'info');
@@ -448,7 +456,7 @@ function bindUI() {
   $('#tabs').addEventListener('click', (e) => {
     const t = e.target.closest('.tab');
     if (!t || t.classList.contains('active')) return;
-    $$('.tab').forEach((x) => x.classList.toggle('active', x === t));
+    $$('.tab').forEach((x) => { x.classList.toggle('active', x === t); x.setAttribute('aria-selected', String(x === t)); });
     ui.view = t.dataset.view;
     ui.category = 'all';
     moveIndicator();
