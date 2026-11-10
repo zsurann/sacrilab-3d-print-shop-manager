@@ -196,7 +196,17 @@ function renderFooter() {
   const when = catalog.generatedAt ? new Date(catalog.generatedAt).toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
   $('#foot').textContent = `Analisi MakerWorld: ${when} · Sacrilab`;
   const pending = itemsFor('pending').length;
-  $('#hero-sub').textContent = `${pending ? `${pending} ${pending === 1 ? 'articolo' : 'articoli'} da valutare · ` : ''}${nextBatchText()}.`;
+  $('#hero-sub').textContent = pending
+    ? `${pending} ${pending === 1 ? 'articolo' : 'articoli'} da valutare, scelti tra i più vendibili di MakerWorld.`
+    : 'I modelli più vendibili di MakerWorld, selezionati per te.';
+  const box = $('#next-batch');
+  box.hidden = !catalog.nextReleaseAt;
+  if (catalog.nextReleaseAt) {
+    const SLOT = 30 * 60000;
+    const left = Math.max(0, catalog.nextReleaseAt - Date.now());
+    $('#next-batch-label').textContent = nextBatchText();
+    $('#next-batch-fill').style.transform = `scaleX(${Math.min(1, 1 - left / SLOT)})`;
+  }
 }
 
 const fmt = (n) => (n >= 10000 ? `${(n / 1000).toFixed(0)}k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace('.', ',')}k` : String(n || 0));
@@ -213,6 +223,9 @@ function buildCard(it, i) {
   img.addEventListener('load', () => { img.classList.add('loaded'); $('.skeleton', card)?.remove(); }, { once: true });
   img.addEventListener('error', () => { $('.skeleton', card)?.remove(); }, { once: true });
   img.src = it.image;
+
+  const latestBatch = Math.max(0, ...catalog.items.map((x) => x.batch || 0));
+  $('.badge-new', card).hidden = !(ui.view === 'pending' && it.batch && it.batch === latestBatch && latestBatch > 1);
 
   const score = Math.round(it.score || 0);
   const sb = $('.badge-score', card);
@@ -318,6 +331,7 @@ async function onDiscard(card, it) {
   card.dataset.busy = '1';
   haptic(10);
   const req = store.discard(it.id);
+  req.catch(() => {}); // l'errore viene gestito sotto, dopo l'animazione
   await removeCard(card, 'discard');
   afterChange();
   try {
@@ -328,7 +342,8 @@ async function onDiscard(card, it) {
     });
   } catch (e) {
     toast(e.message || 'Impossibile scartare', 'err');
-    withTransition(render);
+    if (e.status === 401) return showLogin();
+    sync();
   }
 }
 
@@ -336,6 +351,7 @@ async function onRestore(card, it) {
   if (card.dataset.busy) return;
   card.dataset.busy = '1';
   const req = store.restore(it.id);
+  req.catch(() => {});
   await removeCard(card, 'discard');
   afterChange();
   try {
@@ -343,7 +359,8 @@ async function onRestore(card, it) {
     toast('Articolo rimesso in valutazione', 'info');
   } catch (e) {
     toast(e.message || 'Impossibile ripristinare', 'err');
-    withTransition(render);
+    if (e.status === 401) return showLogin();
+    sync();
   }
 }
 
@@ -437,6 +454,11 @@ function closeSettings() {
   setTimeout(() => { sheet.hidden = bd.hidden = true; sheet.classList.remove('closing'); bd.classList.remove('closing'); }, 280);
 }
 
+function closeSettingsNow() {
+  $('#settings').hidden = true;
+  $('#sheet-backdrop').hidden = true;
+}
+
 async function withLoading(btn, fn) {
   btn.classList.add('loading');
   try { await fn(); } catch (err) {
@@ -503,7 +525,7 @@ function bindSettings() {
     toast('Password del gestore cambiata', 'ok');
   });
 
-  $('#logout').onclick = async () => { await store.logout(); closeSettings(); showLogin(); };
+  $('#logout').onclick = async () => { await store.logout(); showLogin(); };
 
   $('#reset-state').onclick = () => {
     if (!confirm('Rimettere in valutazione tutti gli articoli pubblicati e scartati, su tutti i dispositivi?')) return;
@@ -515,6 +537,22 @@ function bindSettings() {
 
 let loginMode = 'login'; // 'login' | 'setup' | 'bot'
 
+function openLoginOverlay() {
+  const el = $('#login');
+  el.classList.remove('leaving');
+  el.hidden = false;
+  document.body.classList.add('locked');
+}
+
+function closeLoginOverlay() {
+  const el = $('#login');
+  if (el.hidden) return Promise.resolve();
+  document.body.classList.remove('locked');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { el.hidden = true; return Promise.resolve(); }
+  el.classList.add('leaving');
+  return new Promise((r) => setTimeout(() => { el.hidden = true; el.classList.remove('leaving'); r(); }, 520));
+}
+
 function setLoginMode(mode, botFromEnv = false) {
   loginMode = mode;
   const setup = mode === 'setup';
@@ -522,8 +560,9 @@ function setLoginMode(mode, botFromEnv = false) {
   $('#pass-fields').hidden = bot;
   $('#pass2-field').hidden = !setup;
   $('#bot-field').hidden = !(setup || bot) || botFromEnv;
-  $('#login-switch').hidden = !setup;
-  $('#login-pass').required = !bot;
+  $('#login-switch').hidden = !(setup || bot);
+  $('#login-switch').textContent = bot ? 'Esci ed entra con un\'altra password' : 'Ho già una password';
+  $('#login-form').dataset.mode = mode;
   $('#login-sub').textContent = setup ? 'Benvenuto! Crea la password del gestore e collega il bot'
     : bot ? 'Ultimo passo: collega il bot Telegram' : '3D Print Shop Manager';
   $('#login-pass-label').textContent = setup ? 'Nuova password (almeno 6 caratteri)' : 'Password';
@@ -531,9 +570,19 @@ function setLoginMode(mode, botFromEnv = false) {
   $('#login-btn').textContent = setup ? 'Crea password ed entra' : bot ? 'Collega il bot' : 'Entra';
 }
 
+function clearLocalData() {
+  catalog = { items: [], categories: [], generatedAt: null, nextReleaseAt: 0, batchSize: 5 };
+  try { localStorage.removeItem(FEED_CACHE); } catch { /* noop */ }
+  store.clearLocal();
+  session = null;
+  closeSettingsNow();
+  render();
+}
+
 async function showLogin(msg = '') {
   store.forget();
-  $('#login').hidden = false;
+  clearLocalData();
+  openLoginOverlay();
   $('#login-err').textContent = msg;
   try {
     const st = await store.authStatus();
@@ -548,7 +597,7 @@ async function showLogin(msg = '') {
 /** Senza un bot Telegram funzionante non si può usare l'app. */
 function requireBot() {
   if (session?.bot) return false;
-  $('#login').hidden = false;
+  openLoginOverlay();
   setLoginMode('bot', session?.botFromEnv);
   $('#login-err').textContent = session?.botError || '';
   setTimeout(() => $('#login-bot').focus(), 200);
@@ -562,7 +611,19 @@ async function loadSession() {
 }
 
 function bindLogin() {
-  $('#login-switch').onclick = () => setLoginMode('login');
+  $('#login-switch').onclick = async () => {
+    if (loginMode === 'bot') { await store.logout(); return showLogin(); }
+    setLoginMode('login');
+  };
+  // Mostra/nascondi password.
+  $('#login-form').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-eye]');
+    if (!b) return;
+    const inp = b.previousElementSibling;
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    b.classList.toggle('on', inp.type === 'text');
+    inp.focus();
+  });
   $('#login-form').onsubmit = async (e) => {
     e.preventDefault();
     const btn = $('#login-btn');
@@ -581,14 +642,19 @@ function bindLogin() {
         if (!botToken) throw new Error('Inserisci il token del bot Telegram per continuare.');
         await store.saveBotToken(botToken);
       } else {
+        if (!pw) throw new Error('Inserisci la password.');
         await store.login(pw);
       }
       await loadSession();
       if (requireBot()) return;
-      $('#login').hidden = true;
-      for (const id of ['#login-pass', '#login-pass2', '#login-bot']) $(id).value = '';
-      await sync();
+      btn.classList.remove('loading');
+      btn.classList.add('success');
+      await fetchFeed().catch(() => {});
+      await new Promise((r) => setTimeout(r, 380));
       render();
+      await closeLoginOverlay();
+      btn.classList.remove('success');
+      for (const id of ['#login-pass', '#login-pass2', '#login-bot']) { $(id).value = ''; $(id).type = 'password'; }
       if (mode !== 'login') toast(`Bot @${session.bot.username} collegato! Ora scegli la chat`, 'ok');
       if (!session.chatId) openSettings();
     } catch (err) {
@@ -726,9 +792,16 @@ async function boot() {
   document.fonts?.ready.then(moveIndicator);
   registerSW();
 
+  // Aggiornamenti periodici: partono sempre, ma lavorano solo quando si è entrati.
+  const canSync = () => document.visibilityState === 'visible' && store.hasKey() && $('#login').hidden;
+  setInterval(renderFooter, 15_000);
+  setInterval(() => { if (canSync()) sync(); }, SYNC_MS);
+  document.addEventListener('visibilitychange', () => { if (canSync()) sync(); });
+  addEventListener('online', () => { if (canSync()) sync(); });
+
   // Mostra subito i dati in cache, poi sincronizza.
-  render();
   if (!store.hasKey()) return showLogin();
+  render();
   try {
     await loadSession();
     if (requireBot()) return;
@@ -737,11 +810,6 @@ async function boot() {
     if (e.status === 401) return showLogin();
     toast(e.message, 'err');
   }
-
-  setInterval(renderFooter, 20_000);
-  setInterval(() => { if (document.visibilityState === 'visible' && store.hasKey()) sync(); }, SYNC_MS);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && store.hasKey()) sync(); });
-  addEventListener('online', () => store.hasKey() && sync());
 }
 
 boot();

@@ -10,7 +10,8 @@ export async function onRequestPost({ request, env }) {
   const state = await getState(env);
   const key = id == null ? '' : String(id);
   if (op === 'discard' && key) {
-    delete state.published[key];
+    // Un altro dispositivo potrebbe averlo già pubblicato mentre questo non era aggiornato.
+    if (state.published[key]) return fail(409, `Questo articolo è già stato pubblicato a ${state.published[key].price}€ da un altro dispositivo.`);
     state.discarded[key] = { at: Date.now() };
   } else if (op === 'restore' && key) {
     delete state.published[key];

@@ -397,29 +397,108 @@ small.hint { margin: 6px 0 0; font-size: 12px; color: var(--text-3); }
 }
 
 /* ---------- login ---------- */
-.login { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: var(--bg); animation: fade .3s both; }
-.login::before { content: ""; position: absolute; inset: 0; background: radial-gradient(600px 400px at 50% 30%, rgba(255, 94, 58, 0.22), transparent 70%); pointer-events: none; }
+body.locked { overflow: hidden; }
+.login {
+  position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; overflow-y: auto;
+  padding: calc(24px + var(--safe-top)) 20px calc(24px + var(--safe-bottom));
+  background: var(--bg); animation: loginIn .5s var(--ease) both;
+}
+.login.leaving { animation: loginOut .52s var(--ease) forwards; pointer-events: none; }
+.login.leaving .login-card { animation: cardOut .45s var(--ease) forwards; }
+@keyframes loginIn { from { opacity: 0; } }
+@keyframes loginOut { to { opacity: 0; visibility: hidden; } }
+@keyframes cardOut { to { opacity: 0; transform: translateY(-18px) scale(1.04); filter: blur(6px); } }
+
+.login-orbs { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.login-orbs span { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .45; animation: drift 16s ease-in-out infinite alternate; }
+.login-orbs span:nth-child(1) { width: 420px; height: 420px; background: var(--accent); top: -120px; left: -80px; }
+.login-orbs span:nth-child(2) { width: 380px; height: 380px; background: var(--accent-3); bottom: -140px; right: -100px; animation-delay: -5s; opacity: .3; }
+.login-orbs span:nth-child(3) { width: 260px; height: 260px; background: var(--accent-2); top: 40%; left: 55%; animation-delay: -10s; opacity: .22; }
+@media (prefers-color-scheme: light) { .login-orbs span { opacity: .18; } }
+
 .login-card {
-  position: relative; width: min(380px, 100%); padding: 32px 24px 24px; border-radius: 28px; text-align: center;
-  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); animation: rise .6s var(--ease) both;
+  position: relative; width: min(400px, 100%); padding: 34px 26px 24px; border-radius: 30px; text-align: center;
+  background: color-mix(in srgb, var(--surface-solid) 78%, transparent); border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, .06);
+  backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
+  animation: cardIn .7s var(--spring) both .05s;
 }
-.login-card h1 { margin: 16px 0 2px; font-size: 26px; letter-spacing: -0.03em; }
-.login-card > p { margin: 0 0 22px; color: var(--text-2); }
+.login-card > * { animation: rise .6s var(--ease) both; }
+.login-card > :nth-child(1) { animation-delay: .12s; }
+.login-card > :nth-child(2) { animation-delay: .18s; }
+.login-card > :nth-child(3) { animation-delay: .24s; }
+.login-card > :nth-child(4) { animation-delay: .30s; }
+.login-card > :nth-child(5) { animation-delay: .36s; }
+.login-card > :nth-child(6) { animation-delay: .42s; }
+.login-card > :nth-child(n+7) { animation-delay: .48s; }
+.login-card h1 { margin: 18px 0 4px; font-size: 28px; letter-spacing: -0.035em; }
+.login-card > p { margin: 0 0 24px; color: var(--text-2); }
 .login-card .field { text-align: left; }
-.login-card .btn { width: 100%; }
-.login-card .hint { margin-top: 12px; color: var(--danger); min-height: 1em; }
-.login-logo {
-  width: 84px; height: 84px; margin: 0 auto; border-radius: 24px; position: relative;
-  background: linear-gradient(145deg, #1d1b2b, #0e0d16); box-shadow: 0 18px 40px -14px var(--accent); animation: float 4s ease-in-out infinite;
-}
-.login-logo::after { content: ""; position: absolute; inset: 16px; background: #fff; -webkit-mask: url(../icons/logo-white.png) center / contain no-repeat; mask: url(../icons/logo-white.png) center / contain no-repeat; }
+.login-card .btn { width: 100%; height: 50px; font-size: 16px; }
+.login-card .login-err { margin: 12px 0 0; color: var(--danger); min-height: 1.2em; font-weight: 600; }
+.login-card .login-err:not(:empty) { animation: rise .3s var(--ease) both; }
+.login-card .bot-hint { color: var(--text-3); margin-top: 6px; min-height: 0; text-align: left; }
 .login-card.shake { animation: shake .4s; }
+.login-card #pass2-field:not([hidden]), .login-card #bot-field:not([hidden]) { animation: expand .45s var(--ease) both; }
+@keyframes expand { from { opacity: 0; transform: translateY(-8px); } }
+
+.login-logo {
+  width: 88px; height: 88px; margin: 0 auto; border-radius: 26px; position: relative;
+  background: linear-gradient(145deg, #23203a, #0e0d16);
+  box-shadow: 0 20px 44px -14px var(--accent), inset 0 0 0 1px rgba(255, 255, 255, .08);
+  animation: rise .6s var(--ease) both .1s, float 5s ease-in-out infinite 1s;
+}
+.login-logo::before {
+  content: ""; position: absolute; inset: -2px; border-radius: 28px; padding: 2px;
+  background: conic-gradient(from var(--a, 0deg), var(--accent), var(--accent-3), var(--accent-2), var(--accent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: spinA 4s linear infinite; opacity: .9;
+}
+.login-logo i { position: absolute; inset: 17px; background: #fff; -webkit-mask: url(../icons/logo-white.png) center / contain no-repeat; mask: url(../icons/logo-white.png) center / contain no-repeat; }
+@property --a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes spinA { to { --a: 360deg; } }
+
+.pass-wrap { position: relative; }
+.pass-wrap input { padding-right: 46px; }
+.eye {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px;
+  display: grid; place-items: center; border: 0; border-radius: 10px; background: none; color: var(--text-3); transition: color .2s, background .2s;
+}
+.eye:hover { color: var(--text); background: var(--surface-2); }
+.eye.on { color: var(--accent); }
+.eye svg { width: 18px; height: 18px; }
+
+.btn.success { background: linear-gradient(135deg, #10b981, var(--ok)); box-shadow: 0 8px 24px -8px var(--ok); color: transparent; }
+.btn.success::after {
+  content: ""; position: absolute; width: 12px; height: 22px; border: solid #fff; border-width: 0 3px 3px 0;
+  transform: translateY(-2px) rotate(45deg); animation: tick .35s var(--spring) both;
+}
+@keyframes tick { from { opacity: 0; transform: translateY(-2px) rotate(45deg) scale(.3); } }
 
 .bot-status { display: flex; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 14px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); font-size: 14px; }
-.bot-status .dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
+.bot-status .dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); animation: pulse 2s ease-in-out infinite; }
 .bot-status.err .dot { background: var(--danger); box-shadow: 0 0 0 4px var(--danger-soft); }
 .bot-status small { display: block; color: var(--text-3); }
+@keyframes pulse { 50% { box-shadow: 0 0 0 7px transparent; } }
 .field .opt { font-style: normal; font-weight: 400; color: var(--text-3); }
-.link-btn { margin-top: 12px; border: 0; background: none; color: var(--text-2); font-size: 13px; text-decoration: underline; }
-.login-card .bot-hint { color: var(--text-3); margin-top: 6px; min-height: 0; text-align: left; }
+.link-btn { margin-top: 14px; border: 0; background: none; color: var(--text-2); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.link-btn:hover { color: var(--text); }
+
+/* ---------- prossimi articoli ---------- */
+.next-batch {
+  display: inline-flex; align-items: center; gap: 12px; margin-top: 14px; padding: 8px 14px 8px 12px; border-radius: 99px;
+  background: var(--surface); border: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text-2);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); animation: rise .6s var(--ease) both .15s;
+}
+.next-batch::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); animation: pulse 2s ease-in-out infinite; }
+.next-batch-bar { width: 90px; height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.next-batch-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transform-origin: left; transition: transform 1s var(--ease); }
+
+.badge-new {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); padding: 5px 11px; border-radius: 99px;
+  font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #fff;
+  background: linear-gradient(135deg, var(--accent-3), #6366f1); box-shadow: 0 6px 18px -6px var(--accent-3);
+  animation: newPop .6s var(--spring) both .3s;
+}
+@keyframes newPop { from { opacity: 0; transform: translateX(-50%) scale(.5); } }
+@media (max-width: 640px) { .next-batch { width: 100%; justify-content: space-between; } .next-batch-bar { flex: 1; max-width: 140px; } }

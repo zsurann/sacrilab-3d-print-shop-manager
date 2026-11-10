@@ -43,6 +43,10 @@
       <div class="hero-text">
         <h1>Scegli, prezza, <span class="grad">pubblica.</span></h1>
         <p id="hero-sub">I modelli più vendibili di MakerWorld, selezionati per te.</p>
+        <div class="next-batch" id="next-batch" hidden>
+          <span class="next-batch-label" id="next-batch-label"></span>
+          <span class="next-batch-bar"><i id="next-batch-fill"></i></span>
+        </div>
       </div>
       <div class="stats" id="stats">
         <div class="stat" data-k="pending"><b>0</b><span>Da valutare</span></div>
@@ -159,28 +163,29 @@
 
   <!-- Accesso -->
   <div class="login" id="login" hidden>
-    <form class="login-card" id="login-form">
-      <div class="login-logo" aria-hidden="true"></div>
+    <div class="login-orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+    <form class="login-card" id="login-form" novalidate>
+      <div class="login-logo" aria-hidden="true"><i></i></div>
       <h1>Sacrilab</h1>
       <p id="login-sub">3D Print Shop Manager</p>
       <div id="pass-fields">
         <label class="field">
           <span id="login-pass-label">Password</span>
-          <input type="password" id="login-pass" autocomplete="current-password" required />
+          <div class="pass-wrap"><input type="password" id="login-pass" autocomplete="current-password" /><button type="button" class="eye" data-eye aria-label="Mostra password" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         </label>
         <label class="field" id="pass2-field" hidden>
           <span>Ripeti la password</span>
-          <input type="password" id="login-pass2" autocomplete="new-password" />
+          <div class="pass-wrap"><input type="password" id="login-pass2" autocomplete="new-password" /><button type="button" class="eye" data-eye aria-label="Mostra password" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         </label>
       </div>
       <label class="field" id="bot-field" hidden>
         <span>Token del bot Telegram <em class="opt">(obbligatorio)</em></span>
-        <input type="password" id="login-bot" placeholder="123456789:AA…" spellcheck="false" autocomplete="off" />
+        <div class="pass-wrap"><input type="password" id="login-bot" placeholder="123456789:AA…" spellcheck="false" autocomplete="off" /><button type="button" class="eye" data-eye aria-label="Mostra password" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         <small class="hint bot-hint">Su Telegram: @BotFather → /mybots → il tuo bot → API Token.</small>
       </label>
       <button type="submit" class="btn btn-primary" id="login-btn">Entra</button>
       <button type="button" class="link-btn" id="login-switch" hidden>Ho già una password</button>
-      <small class="hint" id="login-err"></small>
+      <small class="hint login-err" id="login-err" role="alert"></small>
     </form>
   </div>
 
@@ -192,6 +197,7 @@
         <div class="skeleton"></div>
         <img loading="lazy" decoding="async" alt="" referrerpolicy="no-referrer" />
         <span class="badge-score" title="Punteggio di vendibilità"></span>
+        <span class="badge-new" hidden>Nuovo</span>
         <span class="badge-cat"></span>
         <a class="badge-link" target="_blank" rel="noopener" title="Apri su MakerWorld" aria-label="Apri su MakerWorld">
           <svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>

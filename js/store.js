@@ -14,6 +14,14 @@ let key = load(KEY_AUTH, '');
 export const hasKey = () => Boolean(key);
 function setKey(k) { key = k || ''; save(KEY_AUTH, key); }
 export function forget() { key = ''; try { localStorage.removeItem(KEY_AUTH); } catch { /* noop */ } }
+/** Cancella i dati salvati su questo dispositivo (usato quando si esce). */
+export function clearLocal() {
+  state.published = {};
+  state.discarded = {};
+  drafts.titles = {};
+  drafts.prices = {};
+  for (const k of [KEY_CACHE, KEY_DRAFTS]) { try { localStorage.removeItem(k); } catch { /* noop */ } }
+}
 
 export async function api(path, { method = 'GET', body, headers = {} } = {}) {
   let res;
