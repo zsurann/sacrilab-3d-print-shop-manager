@@ -178,11 +178,19 @@
           <div class="pass-wrap"><input type="password" id="login-pass2" autocomplete="new-password" /><button type="button" class="eye" data-eye aria-label="Mostra password" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         </label>
       </div>
-      <label class="field" id="bot-field" hidden>
-        <span>Token del bot Telegram <em class="opt">(obbligatorio)</em></span>
-        <div class="pass-wrap"><input type="password" id="login-bot" placeholder="123456789:AA…" spellcheck="false" autocomplete="off" /><button type="button" class="eye" data-eye aria-label="Mostra password" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
-        <small class="hint bot-hint">Su Telegram: @BotFather → /mybots → il tuo bot → API Token.</small>
-      </label>
+      <div class="field" id="bot-field" hidden>
+        <label for="login-bot" class="field-head">Token del bot Telegram <b class="req">Obbligatorio</b></label>
+        <div class="pass-wrap"><input type="password" id="login-bot" placeholder="es. 123456789:AAH4k…" spellcheck="false" autocomplete="off" autocapitalize="off" /><button type="button" class="eye" data-eye aria-label="Mostra token" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+        <details class="howto">
+          <summary>Come trovo il token?</summary>
+          <ol>
+            <li>Apri Telegram e cerca <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> (ha la spunta blu).</li>
+            <li>Scrivi <code>/mybots</code> e tocca il tuo bot (es. FlashShoppBot).</li>
+            <li>Tocca <b>API Token</b>: copia il codice che appare, simile a <code>123456789:AAH4k…</code>.</li>
+            <li>Incollalo qui sopra. Senza il token non si può proseguire.</li>
+          </ol>
+        </details>
+      </div>
       <button type="submit" class="btn btn-primary" id="login-btn">Entra</button>
       <button type="button" class="link-btn" id="login-switch" hidden>Ho già una password</button>
       <small class="hint login-err" id="login-err" role="alert"></small>

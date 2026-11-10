@@ -1,5 +1,5 @@
-// Service worker: app shell cache-first, catalogo network-first, immagini stale-while-revalidate.
-const VERSION = 'sacrilab-v2.3.0';
+// Service worker: app e catalogo dalla rete (copia salvata solo offline), immagini dalla cache.
+const VERSION = 'sacrilab-v2.4.0';
 const SHELL = [
   './', 'manifest.webmanifest', 'css/styles.css',
   'js/app.js', 'js/store.js',
@@ -75,18 +75,16 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // App shell: stale-while-revalidate, così gli aggiornamenti arrivano al riavvio successivo.
+  // App: prima la rete (così si vede sempre l'ultima versione), la copia salvata solo offline.
   if (url.origin === location.origin) {
     e.respondWith(
-      caches.open(VERSION).then(async (c) => {
-        const hit = await c.match(req, { ignoreSearch: true });
-        const net = fetch(req).then((res) => {
-          if (res.ok) c.put(req, res.clone());
-          return res;
-        }).catch(() => hit || c.match('./'));
-        if (hit) { e.waitUntil(net); return hit; }
-        return net;
-      }),
+      fetch(req, { cache: 'no-cache' }).then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(VERSION).then((c) => c.put(req, copy));
+        }
+        return res;
+      }).catch(async () => (await caches.match(req, { ignoreSearch: true })) || caches.match('./')),
     );
   }
 });

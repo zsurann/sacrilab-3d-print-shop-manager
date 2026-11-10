@@ -1,108 +1,66 @@
-# Sacrilab 3D Print Shop Manager
+<p align="center"><img src="icons/icon-192.png" width="96" alt="Sacrilab" /></p>
 
-PWA per scegliere i modelli 3D più vendibili da [MakerWorld](https://makerworld.com/it), dare un prezzo e pubblicarli sul bot Telegram [@FlashShoppBot](https://t.me/FlashShoppBot) con foto e didascalia «titolo, prezzo€».
+<h1 align="center">Sacrilab 3D Print Shop Manager</h1>
+
+<p align="center">L'app che sceglie per te gli oggetti stampati in 3D più vendibili<br/>e li pubblica sul tuo canale Telegram con foto e prezzo.</p>
+
+---
+
+## Cosa fa
+
+Ogni giorno su [MakerWorld](https://makerworld.com/it) vengono pubblicati migliaia di modelli 3D. Sacrilab li analizza al posto tuo e ti propone solo quelli con più possibilità di essere venduti: oggetti utili per la casa, la cucina e l'ufficio, utensili, gadget, decorazioni, giochi, idee regalo e molto altro.
+
+Tu devi solo guardare le proposte, decidere un prezzo e premere **Pubblica**: l'app invia al bot Telegram la foto dell'oggetto con la didascalia nel formato
+
+> **supporto tagliere, 7€**
 
 ## Come funziona
 
-- **Ogni 30 minuti** GitHub Actions analizza MakerWorld, aggiorna la selezione e la invia al sito su Cloudflare (`PUT /api/catalog`). Non fa commit: il sito non viene ricostruito a ogni aggiornamento.
-- **Cloudflare Pages** ospita l'app e le API (`functions/`). Catalogo, articoli pubblicati/scartati e impostazioni sono salvati in **Cloudflare KV**, quindi sono uguali su tutti i dispositivi.
-- **Il bot Telegram è collegato sul server**: il token è salvato su Cloudflare, non sui dispositivi. Da qualsiasi dispositivo basta entrare con la password del gestore o del proprietario.
-- **5 articoli ogni 30 minuti**: il sito sblocca i 5 migliori articoli del catalogo non ancora mostrati. Quelli non valutati restano in lista finché non li prezzi o scarti (oltre 100 in attesa non se ne aggiungono altri). Il primo gruppo di 5 arriva appena il gestore completa la configurazione.
-- **L'app** si aggiorna da sola ogni minuto e quando la riapri, e mostra quanto manca ai prossimi 5 articoli.
+### 5 nuovi articoli ogni mezz'ora
+Ogni 30 minuti compaiono **5 nuovi articoli** da valutare, scelti tra i migliori disponibili in quel momento. Quelli che non hai ancora valutato restano in lista finché non decidi. In alto vedi quanto manca al prossimo gruppo di 5.
 
-### Selezione degli articoli
+### Valutare un articolo
+Per ogni articolo vedi la foto, il titolo, la categoria e i numeri che contano (download, mi piace, stampe). Puoi:
 
-Ogni modello riceve un punteggio di vendibilità da 35 a 99 basato su:
-- popolarità (download, stampe, like, collezioni, commenti, in scala logaritmica);
-- rapporto stampe/download e like/download (modelli che le persone stampano davvero);
-- novità (pubblicati negli ultimi 30/90 giorni);
-- parole chiave che indicano oggetti utili, da regalo, da esposizione o facili da stampare.
+- **Modificare il titolo**: toccalo e scrivi come vuoi che appaia su Telegram (es. tradurlo in italiano).
+- **Inserire il prezzo**: solo il numero, l'euro viene aggiunto da solo. Puoi usare i decimali (es. `7,50`).
+- **Pubblica**: la foto con «titolo, prezzo€» arriva subito su Telegram e l'articolo passa tra i *Pubblicati*.
+- **Scarta**: l'articolo sparisce dalla lista. Se hai sbagliato, premi **Annulla** nel messaggio che compare.
 
-**Nessun articolo viene escluso.** I modelli con marchi o personaggi di terzi e quelli con licenza *NonCommercial* hanno un badge giallo di avviso; file di test e ricambi per stampanti ricevono solo una penalità di punteggio. Le esclusioni si riattivano in `FILTERS` dentro `scraper/config.mjs`.
+Tocca la foto per vederla ingrandita, oppure l'icona ↗ per aprire il modello originale su MakerWorld.
 
-Ogni esecuzione analizza le pagine di tendenza più 2 categorie a rotazione (in circa 3 ore le copre tutte); gli articoli già trovati restano nel catalogo e vengono riclassificati a ogni giro. Avviando il workflow a mano con l'opzione **full** si analizzano tutte le categorie in una volta.
+### Pubblicati e Scartati
+Nelle schede in alto trovi lo storico: gli articoli pubblicati con il prezzo scelto e quelli scartati. Da lì puoi rimettere un articolo in valutazione in qualsiasi momento.
 
-## Configurazione
-
-### 1. Cloudflare Pages
-
-1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages → Create → Pages → Connect to Git** → scegli `zsurann/sacrilab-3d-print-shop-manager`.
-2. Impostazioni di build:
-   | Campo | Valore |
-   |---|---|
-   | Production branch | `main` |
-   | Framework preset | `None` |
-   | Build command | `bash scripts/build-site.sh` |
-   | Build output directory | `_site` |
-3. **Save and Deploy.**
-
-### 2. Database KV
-
-1. **Workers & Pages → KV → Create namespace**, nome ad esempio `sacrilab`.
-2. Nel progetto Pages: **Settings → Bindings → Add → KV namespace**: *Variable name* `KV`, namespace `sacrilab`.
-
-### 3. Variabili segrete del progetto Pages
-
-**Settings → Variables and Secrets → Add**, tipo **Secret**, ambiente *Production*:
-
-| Nome | Valore |
+### Cosa significano i badge
+| Badge | Significato |
 |---|---|
-| `OWNER_PASSWORD` | la password del proprietario: funziona sempre, anche se il gestore cambia la sua |
-| `INGEST_TOKEN` | una stringa casuale lunga, la stessa del passo 4 (es. generata con `openssl rand -hex 32`) |
+| 🔥 92 | Punteggio di vendibilità da 35 a 99: più è alto, più l'oggetto è popolare e richiesto |
+| **Nuovo** | Fa parte dell'ultimo gruppo di 5 articoli arrivato |
+| Molto scaricato, Amatissimo, Stampato spesso… | Perché l'articolo è stato scelto |
+| ⚠️ Marchio di terzi | Contiene personaggi o marchi famosi: venderlo potrebbe violare diritti altrui |
+| ⚠️ Licenza non commerciale | L'autore non permette di vendere le stampe del modello |
 
-Facoltativi: `TELEGRAM_BOT_TOKEN` (se preferisci tenere il token del bot qui invece di inserirlo dall'app), `TELEGRAM_CHAT_ID` (chat predefinita), `CAPTION_FORMAT` (didascalia predefinita).
+Prima di vendere controlla sempre la licenza sulla pagina MakerWorld del modello.
 
-Dopo aver aggiunto binding e variabili: **Deployments → … → Retry deployment**, perché le modifiche valgono dal deploy successivo.
+### Ricerca e filtri
+Cerca per parola, filtra per categoria (Casa, Cucina, Utensili, Gadget, Tech, Decorazione, Giochi, Giardino, Veicoli, Animali, Regali) e ordina per vendibilità, download, mi piace, stampe o novità.
 
-### 4. GitHub (aggiornamento ogni 30 minuti)
+## Accesso e dispositivi
 
-Nel repository: **Settings → Secrets and variables → Actions**:
-- scheda **Secrets** → *New repository secret* `INGEST_TOKEN` = lo stesso valore messo su Cloudflare;
-- scheda **Variables** → *New repository variable* `SITE_URL` = l'indirizzo del sito, es. `https://sacrilab-3d-print-shop-manager.pages.dev`.
+- **Il gestore** sceglie la sua password la prima volta che apre l'app e collega il bot Telegram. Da quel momento, su qualsiasi dispositivo, basta inserire la password.
+- **Il proprietario** ha una sua password personale che funziona sempre, anche se il gestore cambia la propria.
+- **Tutto è sincronizzato**: se pubblichi dal telefono, l'articolo risulta pubblicato anche sul computer. L'app si aggiorna da sola ogni minuto.
+- Dalle **Impostazioni** (icona ⚙️) si sceglie la chat Telegram, si cambia il formato della didascalia, si cambia la password del gestore e si esce dal dispositivo.
 
-Poi **Actions → «Aggiorna catalogo MakerWorld» → Run workflow**. Il primo giro analizza da solo tutte le categorie (circa 15 minuti). Da lì in poi parte da solo ogni 30 minuti; GitHub può ritardare gli avvii programmati di qualche minuto.
+## Installala come app
 
-> GitHub sospende i workflow programmati dopo 60 giorni senza commit sul repository: se succede, riattivalo da **Actions** con *Enable workflow*.
+- **iPhone**: apri il sito con Safari → tocca *Condividi* → *Aggiungi alla schermata Home*.
+- **Android**: apri il sito con Chrome → menu ⋮ → *Installa app*.
+- **Computer**: in Chrome o Edge clicca l'icona di installazione nella barra degli indirizzi.
 
-### 5. Primo accesso e Telegram
+L'app si apre a schermo intero, come un'app normale, e funziona sia con il tema chiaro sia con quello scuro.
 
-1. Il gestore apre il sito: la prima volta compare **«Benvenuto! Crea la password del gestore e collega il bot»**. Sceglie la password (almeno 6 caratteri) e incolla il token del bot (da [@BotFather](https://t.me/BotFather) → `/mybots` → il bot → *API Token*): **senza un token valido non si può proseguire**. Appena entra trova i primi 5 articoli (se il catalogo non è ancora pronto compaiono da soli appena arriva).
-2. Si aprono le **Impostazioni**: scrivi un messaggio qualsiasi a @FlashShoppBot (o aggiungilo come amministratore al gruppo/canale dove vuoi pubblicare), premi **Trova**, scegli la chat, **Salva** e poi **Messaggio di prova**.
-3. Su ogni altro dispositivo si entra con la password del gestore **oppure** con quella del proprietario (`OWNER_PASSWORD`). L'accesso resta memorizzato per un anno.
+---
 
-Dalle impostazioni si può cambiare la password del gestore (lo può fare anche il proprietario): i dispositivi del gestore dovranno entrare di nuovo, quelli del proprietario no. La password del proprietario si cambia solo da Cloudflare.
-
-Chat, token del bot e formato della didascalia (`{titolo}`, `{prezzo}`, `{link}`; predefinito `{titolo}, {prezzo}€` → `supporto tagliere, 7€`) valgono per tutti i dispositivi.
-
-### 6. Installare l'app
-
-- **iPhone**: Safari → Condividi → *Aggiungi alla schermata Home*;
-- **Android**: Chrome → menu → *Installa app*;
-- **PC**: icona di installazione nella barra degli indirizzi di Chrome/Edge.
-
-## Problemi comuni
-
-- **Catalogo vuoto**: controlla l'ultima esecuzione in *Actions*. Avviala con l'opzione **debug** per ottenere screenshot e log tra gli *artifact*. Se lo scraper non trova modelli il catalogo esistente non viene sovrascritto.
-- **«Database non collegato»**: manca il binding KV con nome `KV`; aggiungilo e rifai il deploy.
-- **La password del proprietario non funziona**: controlla `OWNER_PASSWORD` (maiuscole/minuscole contano) e rifai il deploy.
-- **«Token di invio non valido» nel workflow**: `INGEST_TOKEN` su GitHub e su Cloudflare non coincidono.
-
-## Sviluppo locale
-
-```bash
-cd scraper && npm install && npm test
-```
-
-```bash
-bash scripts/build-site.sh
-```
-
-```bash
-npx wrangler pages dev _site --kv KV --binding OWNER_PASSWORD=prova INGEST_TOKEN=prova
-```
-
-Per lo scraper in locale: `SITE_URL=http://localhost:8788 INGEST_TOKEN=prova npm run scrape` (dentro `scraper/`, dopo `npx playwright install chromium`).
-
-## Nota sulle licenze
-
-Prima di vendere una stampa controlla la licenza del modello su MakerWorld (badge su ogni scheda e link «apri su MakerWorld»). I badge gialli segnalano licenze *NonCommercial* e marchi/personaggi di terzi, la cui vendita può violare i diritti dell'autore o del titolare del marchio.
+Per mettere online l'app e collegarla a Telegram segui la [guida alla configurazione](docs/GUIDA-CONFIGURAZIONE.md).

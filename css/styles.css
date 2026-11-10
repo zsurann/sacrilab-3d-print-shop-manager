@@ -399,7 +399,7 @@ small.hint { margin: 6px 0 0; font-size: 12px; color: var(--text-3); }
 /* ---------- login ---------- */
 body.locked { overflow: hidden; }
 .login {
-  position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; overflow-y: auto;
+  position: fixed; inset: 0; z-index: 90; display: grid; place-items: start center; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   padding: calc(24px + var(--safe-top)) 20px calc(24px + var(--safe-bottom));
   background: var(--bg); animation: loginIn .5s var(--ease) both;
 }
@@ -417,7 +417,7 @@ body.locked { overflow: hidden; }
 @media (prefers-color-scheme: light) { .login-orbs span { opacity: .18; } }
 
 .login-card {
-  position: relative; width: min(400px, 100%); padding: 34px 26px 24px; border-radius: 30px; text-align: center;
+  position: relative; width: min(400px, 100%); margin: auto 0; padding: 34px 26px 24px; border-radius: 30px; text-align: center;
   background: color-mix(in srgb, var(--surface-solid) 78%, transparent); border: 1px solid var(--border);
   box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, .06);
   backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
@@ -502,3 +502,16 @@ body.locked { overflow: hidden; }
 }
 @keyframes newPop { from { opacity: 0; transform: translateX(-50%) scale(.5); } }
 @media (max-width: 640px) { .next-batch { width: 100%; justify-content: space-between; } .next-batch-bar { flex: 1; max-width: 140px; } }
+
+/* ---------- token obbligatorio + guida ---------- */
+.field-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.req { font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.howto { margin-top: 10px; text-align: left; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; overflow: hidden; }
+.howto summary { cursor: pointer; padding: 10px 14px; font-weight: 700; color: var(--tg); list-style: none; display: flex; align-items: center; gap: 8px; }
+.howto summary::-webkit-details-marker { display: none; }
+.howto summary::before { content: "?"; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: rgba(42,171,238,.15); font-size: 11px; font-weight: 800; }
+.howto[open] summary { border-bottom: 1px solid var(--border); }
+.howto ol { margin: 0; padding: 10px 14px 12px 32px; color: var(--text-2); line-height: 1.5; animation: rise .35s var(--ease) both; }
+.howto li + li { margin-top: 4px; }
+.howto code { font-size: 12px; padding: 1px 5px; border-radius: 6px; background: var(--surface-2); color: var(--text); }
+.howto a { color: var(--tg); font-weight: 600; }

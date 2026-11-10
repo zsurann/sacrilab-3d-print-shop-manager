@@ -1,4 +1,4 @@
-// Prima configurazione: il gestore sceglie la password (e facoltativamente il token del bot).
+// Prima configurazione: il gestore sceglie la password e collega il bot Telegram (token obbligatorio).
 // Possibile una sola volta: poi la password si cambia dalle impostazioni.
 import { json, fail } from '../../../lib/server/store.js';
 import { needsSetup, validatePassword, setManagerPassword, createSession } from '../../../lib/server/auth.js';

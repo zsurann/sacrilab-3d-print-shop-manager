@@ -777,7 +777,8 @@ function registerSW() {
       const nw = reg.installing;
       nw?.addEventListener('statechange', () => {
         if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-          toast('Nuova versione disponibile', 'info', { label: 'Aggiorna', fn: () => location.reload() });
+          if (!$('#login').hidden) location.reload();
+          else toast('Nuova versione disponibile', 'info', { label: 'Aggiorna', fn: () => location.reload() });
         }
       });
     });
