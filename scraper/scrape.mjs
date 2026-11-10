@@ -21,8 +21,8 @@ const INGEST_TOKEN = process.env.INGEST_TOKEN || '';
 const CATS_PER_RUN = Number(process.env.CATEGORIES_PER_RUN || 2);
 const RUN_SLOT_MIN = 30;
 
-function categoriesForThisRun() {
-  if (process.env.SCRAPE_ALL === '1' || CATS_PER_RUN >= CATEGORIES.length) return CATEGORIES;
+function categoriesForThisRun(firstRun) {
+  if (firstRun || process.env.SCRAPE_ALL === '1' || CATS_PER_RUN >= CATEGORIES.length) return CATEGORIES;
   const groups = Math.ceil(CATEGORIES.length / CATS_PER_RUN);
   const slot = Math.floor(Date.now() / (RUN_SLOT_MIN * 60000)) % groups;
   return CATEGORIES.slice(slot * CATS_PER_RUN, slot * CATS_PER_RUN + CATS_PER_RUN);
@@ -90,9 +90,15 @@ async function main() {
     } catch { /* risposta non leggibile */ }
   });
 
+  // Il catalogo precedente serve sia per la classifica sia per capire se è il primo giro:
+  // al primo giro si analizzano tutte le categorie, così il sito parte subito pieno.
+  const previous = await loadPrevious();
+  const firstRun = previous.length === 0;
+  if (firstRun) log('Primo giro: analizzo tutte le categorie.');
+
   const targets = [
     ...DISCOVERY_PATHS.map((p) => ({ url: `${BASE}${p}`, hint: null })),
-    ...categoriesForThisRun().flatMap((c) => c.search.map((q) => ({
+    ...categoriesForThisRun(firstRun).flatMap((c) => c.search.map((q) => ({
       url: `${BASE}/${LOCALE}/search/models?keyword=${encodeURIComponent(q)}`,
       hint: c.key,
     }))),
@@ -148,7 +154,6 @@ async function main() {
   // I modelli del catalogo precedente rientrano nella classifica insieme ai nuovi
   // (con statistiche aggiornate se ritrovati), così le categorie non analizzate
   // in questo giro non spariscono.
-  const previous = await loadPrevious();
   const pool = new Map(previous.map((p) => [String(p.id), p]));
   for (const [id, d] of found) pool.set(id, { ...pool.get(id), ...d });
   const { items, rejected } = rank([...pool.values()]);

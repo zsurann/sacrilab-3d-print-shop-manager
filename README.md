@@ -7,7 +7,8 @@ PWA per scegliere i modelli 3D più vendibili da [MakerWorld](https://makerworld
 - **Ogni 30 minuti** GitHub Actions analizza MakerWorld, aggiorna la selezione e la invia al sito su Cloudflare (`PUT /api/catalog`). Non fa commit: il sito non viene ricostruito a ogni aggiornamento.
 - **Cloudflare Pages** ospita l'app e le API (`functions/`). Catalogo, articoli pubblicati/scartati e impostazioni sono salvati in **Cloudflare KV**, quindi sono uguali su tutti i dispositivi.
 - **Il bot Telegram è collegato sul server**: il token è salvato su Cloudflare, non sui dispositivi. Da qualsiasi dispositivo basta entrare con la password del gestore o del proprietario.
-- **L'app** si aggiorna da sola ogni minuto e quando la riapri: nuovi articoli e decisioni prese da altri dispositivi compaiono senza ricaricare.
+- **5 articoli ogni 30 minuti**: il sito sblocca i 5 migliori articoli del catalogo non ancora mostrati. Quelli non valutati restano in lista finché non li prezzi o scarti (oltre 100 in attesa non se ne aggiungono altri). Il primo gruppo di 5 arriva appena il gestore completa la configurazione.
+- **L'app** si aggiorna da sola ogni minuto e quando la riapri, e mostra quanto manca ai prossimi 5 articoli.
 
 ### Selezione degli articoli
 
@@ -59,13 +60,13 @@ Nel repository: **Settings → Secrets and variables → Actions**:
 - scheda **Secrets** → *New repository secret* `INGEST_TOKEN` = lo stesso valore messo su Cloudflare;
 - scheda **Variables** → *New repository variable* `SITE_URL` = l'indirizzo del sito, es. `https://sacrilab-3d-print-shop-manager.pages.dev`.
 
-Poi **Actions → «Aggiorna catalogo MakerWorld» → Run workflow** (spunta *full* per il primo giro). Da lì in poi parte da solo ogni 30 minuti; GitHub può ritardare gli avvii programmati di qualche minuto.
+Poi **Actions → «Aggiorna catalogo MakerWorld» → Run workflow**. Il primo giro analizza da solo tutte le categorie (circa 15 minuti). Da lì in poi parte da solo ogni 30 minuti; GitHub può ritardare gli avvii programmati di qualche minuto.
 
 > GitHub sospende i workflow programmati dopo 60 giorni senza commit sul repository: se succede, riattivalo da **Actions** con *Enable workflow*.
 
 ### 5. Primo accesso e Telegram
 
-1. Il gestore apre il sito: la prima volta compare **«Benvenuto! Crea la password del gestore»**. Sceglie la password (almeno 6 caratteri) e può incollare subito il token del bot (da [@BotFather](https://t.me/BotFather) → `/mybots` → il bot → *API Token*), oppure farlo dopo dalle impostazioni.
+1. Il gestore apre il sito: la prima volta compare **«Benvenuto! Crea la password del gestore e collega il bot»**. Sceglie la password (almeno 6 caratteri) e incolla il token del bot (da [@BotFather](https://t.me/BotFather) → `/mybots` → il bot → *API Token*): **senza un token valido non si può proseguire**. Appena entra trova i primi 5 articoli (se il catalogo non è ancora pronto compaiono da soli appena arriva).
 2. Si aprono le **Impostazioni**: scrivi un messaggio qualsiasi a @FlashShoppBot (o aggiungilo come amministratore al gruppo/canale dove vuoi pubblicare), premi **Trova**, scegli la chat, **Salva** e poi **Messaggio di prova**.
 3. Su ogni altro dispositivo si entra con la password del gestore **oppure** con quella del proprietario (`OWNER_PASSWORD`). L'accesso resta memorizzato per un anno.
 

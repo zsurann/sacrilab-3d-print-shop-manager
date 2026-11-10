@@ -25,42 +25,44 @@ const ui = {
   sort: 'score',
 };
 
-let catalog = { items: [], categories: [], generatedAt: null };
-let catalogEtag = '';
+const FEED_CACHE = 'sacrilab.feed.v1';
+let catalog = { items: [], categories: [], generatedAt: null, nextReleaseAt: 0, batchSize: 5 };
+try { Object.assign(catalog, JSON.parse(localStorage.getItem(FEED_CACHE)) || {}); } catch { /* nessuna cache */ }
 let session = null;
 let pendingRender = false;
 
 /* ------------------------------------------------------------------ data */
 
-async function fetchCatalog() {
-  const res = await fetch('api/catalog', { cache: 'no-store', headers: catalogEtag ? { 'If-None-Match': catalogEtag } : {} });
-  if (res.status === 304) return false;
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  catalogEtag = res.headers.get('ETag') || '';
+const feedSig = () => catalog.items.map((x) => x.id).join(',');
+const stateSig = () => JSON.stringify([Object.keys(store.state.published).sort(), Object.keys(store.state.discarded).sort()]);
+
+/** Scarica gli articoli sbloccati (5 ogni 30 minuti) e le decisioni condivise. */
+async function fetchFeed() {
+  const { data } = await store.api('feed');
+  store.applyState(data.state);
   catalog = {
     items: Array.isArray(data.items) ? data.items : [],
     categories: Array.isArray(data.categories) ? data.categories : [],
     generatedAt: data.generatedAt || null,
+    nextReleaseAt: data.nextReleaseAt || 0,
+    batchSize: data.batchSize || 5,
   };
-  return true;
+  try { localStorage.setItem(FEED_CACHE, JSON.stringify(catalog)); } catch { /* storage pieno */ }
 }
 
-const stateSig = () => JSON.stringify([Object.keys(store.state.published).sort(), Object.keys(store.state.discarded).sort()]);
-
-/** Scarica catalogo e decisioni condivise. In background aggiorna lo schermo solo se
- *  qualcosa è cambiato e non stai scrivendo un prezzo o un titolo. */
+/** In background aggiorna lo schermo solo se qualcosa è cambiato e non stai scrivendo. */
 async function sync({ manual = false } = {}) {
   const btn = $('#btn-refresh');
   if (manual) btn.classList.add('spinning');
-  const before = stateSig();
-  const prevCount = catalog.items.length;
+  const before = feedSig() + stateSig();
+  const prevIds = new Set(catalog.items.map((x) => x.id));
   try {
-    const [catChanged] = await Promise.all([fetchCatalog(), store.refreshState()]);
-    const changed = catChanged || before !== stateSig();
-    if (manual) toast(`Catalogo aggiornato: ${catalog.items.length} articoli`, 'info');
-    else if (catChanged && prevCount && catalog.items.length > prevCount) toast(`${catalog.items.length - prevCount} nuovi articoli`, 'info');
-    if (changed || manual) safeRender();
+    await fetchFeed();
+    const fresh = catalog.items.filter((x) => !prevIds.has(x.id)).length;
+    if (prevIds.size && fresh) toast(fresh === 1 ? 'Nuovo articolo da valutare' : `${fresh} nuovi articoli da valutare`, 'info');
+    else if (manual) toast('Tutto aggiornato', 'info');
+    if (before !== feedSig() + stateSig() || manual) safeRender();
+    else renderFooter();
   } catch (e) {
     if (e.status === 401) return showLogin();
     if (manual) toast(e.message || 'Impossibile aggiornare', 'err');
@@ -168,10 +170,10 @@ function renderGrid() {
     const noData = catalog.items.length === 0;
     const msgs = {
       pending: noData
-        ? ['Catalogo vuoto', 'Il catalogo viene aggiornato automaticamente ogni 30 minuti analizzando MakerWorld. I primi articoli compariranno qui da soli.']
+        ? ['Preparazione dei primi articoli…', 'Sto analizzando MakerWorld per scegliere i modelli più vendibili. I primi 5 articoli compariranno qui da soli tra pochi minuti.']
         : ui.query || ui.category !== 'all'
           ? ['Nessun risultato', 'Prova a cambiare ricerca o categoria.']
-          : ['Tutto fatto! 🎉', 'Hai valutato tutti gli articoli. Nuovi modelli arrivano ogni 30 minuti.'],
+          : ['Tutto fatto! 🎉', `Hai valutato tutti gli articoli. ${nextBatchText()}.`],
       published: ['Ancora nessuna pubblicazione', 'Gli articoli pubblicati su Telegram compariranno qui.'],
       discarded: ['Nessun articolo scartato', 'Gli articoli scartati compariranno qui e potrai ripristinarli.'],
     };
@@ -181,12 +183,20 @@ function renderGrid() {
   }
 }
 
+function minutesToNext() {
+  return Math.max(0, Math.ceil(((catalog.nextReleaseAt || 0) - Date.now()) / 60000));
+}
+function nextBatchText() {
+  if (!catalog.nextReleaseAt) return `Ogni 30 minuti arrivano ${catalog.batchSize} nuovi articoli`;
+  const m = minutesToNext();
+  return m <= 0 ? `I prossimi ${catalog.batchSize} articoli stanno arrivando` : `I prossimi ${catalog.batchSize} articoli arrivano tra ${m} min`;
+}
+
 function renderFooter() {
   const when = catalog.generatedAt ? new Date(catalog.generatedAt).toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
-  $('#foot').textContent = `Catalogo aggiornato: ${when} · Fonte: MakerWorld · Sacrilab`;
-  $('#hero-sub').textContent = catalog.items.length
-    ? `${catalog.items.length} modelli selezionati da MakerWorld tra i più vendibili.`
-    : 'I modelli più vendibili di MakerWorld, selezionati per te.';
+  $('#foot').textContent = `Analisi MakerWorld: ${when} · Sacrilab`;
+  const pending = itemsFor('pending').length;
+  $('#hero-sub').textContent = `${pending ? `${pending} ${pending === 1 ? 'articolo' : 'articoli'} da valutare · ` : ''}${nextBatchText()}.`;
 }
 
 const fmt = (n) => (n >= 10000 ? `${(n / 1000).toFixed(0)}k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace('.', ',')}k` : String(n || 0));
@@ -503,16 +513,22 @@ function bindSettings() {
 
 /* ----------------------------------------------------------------- login */
 
-let setupMode = false;
+let loginMode = 'login'; // 'login' | 'setup' | 'bot'
 
-function setLoginMode(needsSetup) {
-  setupMode = needsSetup;
-  $('#setup-fields').hidden = !needsSetup;
-  $('#login-switch').hidden = !needsSetup;
-  $('#login-sub').textContent = needsSetup ? 'Benvenuto! Crea la password del gestore' : '3D Print Shop Manager';
-  $('#login-pass-label').textContent = needsSetup ? 'Nuova password (almeno 6 caratteri)' : 'Password';
-  $('#login-pass').autocomplete = needsSetup ? 'new-password' : 'current-password';
-  $('#login-btn').textContent = needsSetup ? 'Crea password ed entra' : 'Entra';
+function setLoginMode(mode, botFromEnv = false) {
+  loginMode = mode;
+  const setup = mode === 'setup';
+  const bot = mode === 'bot';
+  $('#pass-fields').hidden = bot;
+  $('#pass2-field').hidden = !setup;
+  $('#bot-field').hidden = !(setup || bot) || botFromEnv;
+  $('#login-switch').hidden = !setup;
+  $('#login-pass').required = !bot;
+  $('#login-sub').textContent = setup ? 'Benvenuto! Crea la password del gestore e collega il bot'
+    : bot ? 'Ultimo passo: collega il bot Telegram' : '3D Print Shop Manager';
+  $('#login-pass-label').textContent = setup ? 'Nuova password (almeno 6 caratteri)' : 'Password';
+  $('#login-pass').autocomplete = setup ? 'new-password' : 'current-password';
+  $('#login-btn').textContent = setup ? 'Crea password ed entra' : bot ? 'Collega il bot' : 'Entra';
 }
 
 async function showLogin(msg = '') {
@@ -521,13 +537,22 @@ async function showLogin(msg = '') {
   $('#login-err').textContent = msg;
   try {
     const st = await store.authStatus();
-    setLoginMode(st.needsSetup);
-    $('#login-bot').closest('.field').hidden = st.botFromEnv;
+    setLoginMode(st.needsSetup ? 'setup' : 'login', st.botFromEnv);
   } catch (e) {
-    setLoginMode(false);
+    setLoginMode('login');
     $('#login-err').textContent = e.message;
   }
   setTimeout(() => $('#login-pass').focus(), 200);
+}
+
+/** Senza un bot Telegram funzionante non si può usare l'app. */
+function requireBot() {
+  if (session?.bot) return false;
+  $('#login').hidden = false;
+  setLoginMode('bot', session?.botFromEnv);
+  $('#login-err').textContent = session?.botError || '';
+  setTimeout(() => $('#login-bot').focus(), 200);
+  return true;
 }
 
 async function loadSession() {
@@ -537,30 +562,37 @@ async function loadSession() {
 }
 
 function bindLogin() {
-  $('#login-switch').onclick = () => setLoginMode(false);
+  $('#login-switch').onclick = () => setLoginMode('login');
   $('#login-form').onsubmit = async (e) => {
     e.preventDefault();
     const btn = $('#login-btn');
     const pw = $('#login-pass').value;
+    const botToken = $('#login-bot').value.trim();
+    const mode = loginMode;
     $('#login-err').textContent = '';
     btn.classList.add('loading');
     try {
-      if (setupMode) {
+      if (mode === 'setup') {
         if (pw.length < 6) throw new Error('La password deve avere almeno 6 caratteri.');
         if (pw !== $('#login-pass2').value) throw new Error('Le due password non coincidono.');
-        await store.setup(pw, $('#login-bot').value.trim());
+        if (!$('#bot-field').hidden && !botToken) throw new Error('Inserisci il token del bot Telegram per continuare.');
+        await store.setup(pw, botToken);
+      } else if (mode === 'bot') {
+        if (!botToken) throw new Error('Inserisci il token del bot Telegram per continuare.');
+        await store.saveBotToken(botToken);
       } else {
         await store.login(pw);
       }
       await loadSession();
+      if (requireBot()) return;
       $('#login').hidden = true;
       for (const id of ['#login-pass', '#login-pass2', '#login-bot']) $(id).value = '';
       await sync();
       render();
-      if (setupMode) toast('Password creata! Ora scegli la chat Telegram', 'ok');
-      if (!session.bot || !session.chatId) openSettings();
+      if (mode !== 'login') toast(`Bot @${session.bot.username} collegato! Ora scegli la chat`, 'ok');
+      if (!session.chatId) openSettings();
     } catch (err) {
-      if (err.status === 409) setLoginMode(false);
+      if (err.status === 409) setLoginMode('login');
       $('#login-err').textContent = err.message;
       const card = $('.login-card');
       card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
@@ -695,16 +727,18 @@ async function boot() {
   registerSW();
 
   // Mostra subito i dati in cache, poi sincronizza.
-  fetchCatalog().then(render).catch(() => render());
+  render();
   if (!store.hasKey()) return showLogin();
   try {
     await loadSession();
+    if (requireBot()) return;
     await sync();
   } catch (e) {
     if (e.status === 401) return showLogin();
     toast(e.message, 'err');
   }
 
+  setInterval(renderFooter, 20_000);
   setInterval(() => { if (document.visibilityState === 'visible' && store.hasKey()) sync(); }, SYNC_MS);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && store.hasKey()) sync(); });
   addEventListener('online', () => store.hasKey() && sync());

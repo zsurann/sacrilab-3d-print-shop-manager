@@ -1,6 +1,7 @@
 // Pubblica un articolo sul bot Telegram e lo segna come pubblicato per tutti i dispositivi.
 import { json, fail, getState, putState, getSettings, getCatalog, getBotToken } from '../../lib/server/store.js';
 import { sendProductPhoto, formatPrice, buildCaption } from '../../lib/server/telegram.js';
+import { getQueue } from '../../lib/server/queue.js';
 
 export async function onRequestPost({ request, env }) {
   const body = await request.json().catch(() => ({}));
@@ -9,8 +10,8 @@ export async function onRequestPost({ request, env }) {
   if (!id) return fail(400, 'Articolo mancante.');
   if (!price) return fail(400, 'Prezzo non valido.');
 
-  const catalog = await getCatalog(env, request);
-  const item = (catalog.items || []).find((x) => String(x.id) === id);
+  const item = (await getQueue(env)).items[id]
+    || ((await getCatalog(env, request)).items || []).find((x) => String(x.id) === id);
   if (!item) return fail(404, 'Articolo non trovato nel catalogo: aggiorna la pagina.');
 
   const state = await getState(env);

@@ -1,5 +1,5 @@
 // Service worker: app shell cache-first, catalogo network-first, immagini stale-while-revalidate.
-const VERSION = 'sacrilab-v2.1.0';
+const VERSION = 'sacrilab-v2.2.0';
 const SHELL = [
   './', 'manifest.webmanifest', 'css/styles.css',
   'js/app.js', 'js/store.js',

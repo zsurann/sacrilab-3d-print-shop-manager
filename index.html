@@ -163,20 +163,21 @@
       <div class="login-logo" aria-hidden="true"></div>
       <h1>Sacrilab</h1>
       <p id="login-sub">3D Print Shop Manager</p>
-      <label class="field">
-        <span id="login-pass-label">Password</span>
-        <input type="password" id="login-pass" autocomplete="current-password" required />
-      </label>
-      <div id="setup-fields" hidden>
+      <div id="pass-fields">
         <label class="field">
+          <span id="login-pass-label">Password</span>
+          <input type="password" id="login-pass" autocomplete="current-password" required />
+        </label>
+        <label class="field" id="pass2-field" hidden>
           <span>Ripeti la password</span>
           <input type="password" id="login-pass2" autocomplete="new-password" />
         </label>
-        <label class="field">
-          <span>Token del bot Telegram <em class="opt">(facoltativo, anche dopo)</em></span>
-          <input type="password" id="login-bot" placeholder="123456789:AA…" spellcheck="false" autocomplete="off" />
-        </label>
       </div>
+      <label class="field" id="bot-field" hidden>
+        <span>Token del bot Telegram <em class="opt">(obbligatorio)</em></span>
+        <input type="password" id="login-bot" placeholder="123456789:AA…" spellcheck="false" autocomplete="off" />
+        <small class="hint bot-hint">Su Telegram: @BotFather → /mybots → il tuo bot → API Token.</small>
+      </label>
       <button type="submit" class="btn btn-primary" id="login-btn">Entra</button>
       <button type="button" class="link-btn" id="login-switch" hidden>Ho già una password</button>
       <small class="hint" id="login-err"></small>
