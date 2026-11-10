@@ -53,8 +53,8 @@
 
     <div class="setup-banner" id="setup-banner" hidden>
       <div>
-        <strong>Collega il bot Telegram</strong>
-        <span>Inserisci token e chat ID per poter pubblicare i prodotti.</span>
+        <strong id="banner-title">Collega il bot Telegram</strong>
+        <span id="banner-text">Scegli la chat in cui pubblicare i prodotti.</span>
       </div>
       <button class="btn btn-primary btn-sm" id="banner-setup">Configura</button>
     </div>
@@ -105,21 +105,14 @@
     </div>
     <form class="sheet-body" id="settings-form" autocomplete="off">
       <h3>Bot Telegram</h3>
-      <p class="hint">Il bot (<a href="https://t.me/FlashShoppBot" target="_blank" rel="noopener">@FlashShoppBot</a>) invia la foto con didascalia «titolo, prezzo€» nella chat indicata. Il token resta salvato solo su questo dispositivo.</p>
+      <div class="bot-status" id="bot-status"></div>
       <label class="field">
-        <span>Token del bot</span>
-        <div class="field-row">
-          <input type="password" id="tg-token" placeholder="123456789:AA…" spellcheck="false" />
-          <button type="button" class="btn btn-ghost btn-sm" id="toggle-token">Mostra</button>
-        </div>
-      </label>
-      <label class="field">
-        <span>Chat ID di destinazione</span>
+        <span>Chat di destinazione</span>
         <div class="field-row">
           <input type="text" id="tg-chat" placeholder="es. 123456789 oppure @miocanale" spellcheck="false" />
           <button type="button" class="btn btn-ghost btn-sm" id="find-chat">Trova</button>
         </div>
-        <small class="hint">Scrivi un messaggio qualsiasi al bot su Telegram, poi premi «Trova».</small>
+        <small class="hint">Scrivi un messaggio qualsiasi al bot su Telegram (o aggiungilo come amministratore al canale), poi premi «Trova».</small>
       </label>
       <div class="chat-list" id="chat-list" hidden></div>
       <label class="field">
@@ -127,21 +120,16 @@
         <input type="text" id="tg-format" placeholder="{titolo}, {prezzo}€" />
         <small class="hint">Variabili: {titolo}, {prezzo}, {link}</small>
       </label>
+      <p class="hint">Queste impostazioni valgono per tutti i dispositivi.</p>
       <div class="sheet-actions">
-        <button type="button" class="btn btn-ghost" id="test-tg">Invia messaggio di prova</button>
+        <button type="button" class="btn btn-ghost" id="test-tg">Messaggio di prova</button>
         <button type="submit" class="btn btn-primary">Salva</button>
       </div>
 
-      <h3>Catalogo</h3>
-      <label class="field">
-        <span>URL dati (opzionale)</span>
-        <input type="url" id="data-url" placeholder="data/products.json" spellcheck="false" />
-        <small class="hint">Lascia vuoto per usare il catalogo aggiornato automaticamente da GitHub Actions.</small>
-      </label>
+      <h3>Account</h3>
       <div class="sheet-actions wrap">
-        <button type="button" class="btn btn-ghost" id="export-state">Esporta stato</button>
-        <label class="btn btn-ghost" for="import-state">Importa stato<input type="file" id="import-state" accept="application/json" hidden /></label>
-        <button type="button" class="btn btn-danger-ghost" id="reset-state">Ripristina tutto</button>
+        <button type="button" class="btn btn-ghost" id="logout">Esci da questo dispositivo</button>
+        <button type="button" class="btn btn-danger-ghost" id="reset-state">Rimetti tutto in valutazione</button>
       </div>
     </form>
   </aside>
@@ -150,6 +138,21 @@
   <div class="lightbox" id="lightbox" hidden>
     <img alt="" id="lightbox-img" />
     <div class="lightbox-cap" id="lightbox-cap"></div>
+  </div>
+
+  <!-- Accesso -->
+  <div class="login" id="login" hidden>
+    <form class="login-card" id="login-form">
+      <div class="login-logo" aria-hidden="true"></div>
+      <h1>Sacrilab</h1>
+      <p>3D Print Shop Manager</p>
+      <label class="field">
+        <span>Password</span>
+        <input type="password" id="login-pass" autocomplete="current-password" required />
+      </label>
+      <button type="submit" class="btn btn-primary" id="login-btn">Entra</button>
+      <small class="hint" id="login-err"></small>
+    </form>
   </div>
 
   <div class="toasts" id="toasts" aria-live="assertive"></div>

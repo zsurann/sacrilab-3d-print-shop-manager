@@ -2,16 +2,20 @@ name: Aggiorna catalogo MakerWorld
 
 on:
   schedule:
-    - cron: '17 5,11,17 * * *'   # 3 volte al giorno (UTC)
+    - cron: '*/30 * * * *'   # ogni 30 minuti (GitHub può ritardare l'avvio di qualche minuto)
   workflow_dispatch:
     inputs:
+      full:
+        description: 'Analizza tutte le categorie (più lento)'
+        type: boolean
+        default: false
       debug:
         description: 'Salva screenshot e log di debug'
         type: boolean
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: scrape
@@ -20,7 +24,7 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
 
@@ -38,27 +42,19 @@ jobs:
         working-directory: scraper
         run: npm test
 
-      - name: Analizza MakerWorld
+      - name: Analizza MakerWorld e invia il catalogo al sito
         working-directory: scraper
         env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+          SCRAPE_ALL: ${{ inputs.full && '1' || '0' }}
           SCRAPER_DEBUG: ${{ inputs.debug && '1' || '0' }}
-        run: npm run scrape
-
-      - name: Salva catalogo
         run: |
-          if git diff --quiet -- data/products.json; then
-            echo "Nessuna modifica al catalogo."
-            exit 0
+          if [ -z "$SITE_URL" ] || [ -z "$INGEST_TOKEN" ]; then
+            echo "::error::Configura la variabile SITE_URL e il secret INGEST_TOKEN (vedi README)."
+            exit 1
           fi
-          git config user.name "sacrilab-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/products.json
-          git commit -m "chore(catalogo): aggiornamento automatico MakerWorld"
-          for i in 1 2 3; do
-            git pull --rebase origin main && git push origin HEAD:main && exit 0
-            sleep $((i * 5))
-          done
-          exit 1
+          npm run scrape
 
       - name: Debug
         if: ${{ always() && inputs.debug }}

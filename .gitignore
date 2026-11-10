@@ -3,3 +3,4 @@ node_modules/
 *.log
 scraper/debug/
 _site/
+.wrangler/

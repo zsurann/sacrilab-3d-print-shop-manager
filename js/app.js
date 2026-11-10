@@ -1,5 +1,7 @@
 import * as store from './store.js';
-import { publishProduct, sendText, findChats, formatPrice, buildCaption } from './telegram.js';
+
+const { formatPrice } = store;
+const SYNC_MS = 60_000;
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -24,29 +26,54 @@ const ui = {
 };
 
 let catalog = { items: [], categories: [], generatedAt: null };
+let catalogEtag = '';
+let session = null;
+let pendingRender = false;
 
 /* ------------------------------------------------------------------ data */
 
-async function loadCatalog({ silent = false } = {}) {
+async function fetchCatalog() {
+  const res = await fetch('api/catalog', { cache: 'no-store', headers: catalogEtag ? { 'If-None-Match': catalogEtag } : {} });
+  if (res.status === 304) return false;
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  catalogEtag = res.headers.get('ETag') || '';
+  catalog = {
+    items: Array.isArray(data.items) ? data.items : [],
+    categories: Array.isArray(data.categories) ? data.categories : [],
+    generatedAt: data.generatedAt || null,
+  };
+  return true;
+}
+
+const stateSig = () => JSON.stringify([Object.keys(store.state.published).sort(), Object.keys(store.state.discarded).sort()]);
+
+/** Scarica catalogo e decisioni condivise. In background aggiorna lo schermo solo se
+ *  qualcosa è cambiato e non stai scrivendo un prezzo o un titolo. */
+async function sync({ manual = false } = {}) {
   const btn = $('#btn-refresh');
-  btn.classList.add('spinning');
-  const url = store.settings.dataUrl || 'data/products.json';
+  if (manual) btn.classList.add('spinning');
+  const before = stateSig();
+  const prevCount = catalog.items.length;
   try {
-    const res = await fetch(url, { cache: 'no-cache' });
-    if (!res.ok) throw new Error(res.status);
-    const data = await res.json();
-    catalog = {
-      items: Array.isArray(data.items) ? data.items : [],
-      categories: Array.isArray(data.categories) ? data.categories : [],
-      generatedAt: data.generatedAt || null,
-    };
-    if (!silent) toast(`Catalogo aggiornato: ${catalog.items.length} articoli`, 'info');
+    const [catChanged] = await Promise.all([fetchCatalog(), store.refreshState()]);
+    const changed = catChanged || before !== stateSig();
+    if (manual) toast(`Catalogo aggiornato: ${catalog.items.length} articoli`, 'info');
+    else if (catChanged && prevCount && catalog.items.length > prevCount) toast(`${catalog.items.length - prevCount} nuovi articoli`, 'info');
+    if (changed || manual) safeRender();
   } catch (e) {
-    if (!silent) toast('Impossibile caricare il catalogo', 'err');
-    console.error(e);
+    if (e.status === 401) return showLogin();
+    if (manual) toast(e.message || 'Impossibile aggiornare', 'err');
+    console.warn(e);
   } finally {
-    setTimeout(() => btn.classList.remove('spinning'), 400);
+    if (manual) setTimeout(() => btn.classList.remove('spinning'), 400);
   }
+}
+
+function safeRender() {
+  const typing = document.activeElement?.closest?.('#grid') && document.activeElement.matches('input, textarea');
+  if (typing || $('#grid .card[data-busy]')) { pendingRender = true; return; }
+  pendingRender = false;
   render();
 }
 
@@ -74,7 +101,7 @@ function visibleItems() {
   return list.sort(sorters[ui.sort] || sorters.score);
 }
 
-const titleOf = (it) => store.state.titles[it.id] ?? it.title;
+const titleOf = (it) => store.draftTitle(it.id) ?? it.title;
 
 /* ---------------------------------------------------------------- render */
 
@@ -83,7 +110,20 @@ function render() {
   renderChips();
   renderGrid();
   renderFooter();
-  $('#setup-banner').hidden = Boolean(store.settings.token && store.settings.chatId);
+  renderBanner();
+}
+
+function renderBanner() {
+  const banner = $('#setup-banner');
+  if (!session) { banner.hidden = true; return; }
+  if (!session.bot) {
+    $('#banner-title').textContent = 'Bot Telegram non collegato';
+    $('#banner-text').textContent = session.botError || 'Configura il token del bot su Cloudflare.';
+  } else {
+    $('#banner-title').textContent = 'Scegli la chat Telegram';
+    $('#banner-text').textContent = `Il bot @${session.bot.username} è collegato: indica dove pubblicare i prodotti.`;
+  }
+  banner.hidden = Boolean(session.bot && session.chatId);
 }
 
 function renderCounts() {
@@ -128,10 +168,10 @@ function renderGrid() {
     const noData = catalog.items.length === 0;
     const msgs = {
       pending: noData
-        ? ['Catalogo vuoto', 'Il catalogo viene generato automaticamente da GitHub Actions analizzando MakerWorld. Avvia il workflow «Aggiorna catalogo MakerWorld» oppure attendi il prossimo aggiornamento.']
+        ? ['Catalogo vuoto', 'Il catalogo viene aggiornato automaticamente ogni 30 minuti analizzando MakerWorld. I primi articoli compariranno qui da soli.']
         : ui.query || ui.category !== 'all'
           ? ['Nessun risultato', 'Prova a cambiare ricerca o categoria.']
-          : ['Tutto fatto! 🎉', 'Hai valutato tutti gli articoli. Nuovi modelli arriveranno al prossimo aggiornamento del catalogo.'],
+          : ['Tutto fatto! 🎉', 'Hai valutato tutti gli articoli. Nuovi modelli arrivano ogni 30 minuti.'],
       published: ['Ancora nessuna pubblicazione', 'Gli articoli pubblicati su Telegram compariranno qui.'],
       discarded: ['Nessun articolo scartato', 'Gli articoli scartati compariranno qui e potrai ripristinarli.'],
     };
@@ -191,7 +231,7 @@ function buildCard(it, i) {
 
   const actions = $('.card-actions', card);
   if (ui.view === 'pending') {
-    const price = store.state.prices[it.id] ?? '';
+    const price = store.draftPrice(it.id) ?? '';
     actions.innerHTML = `
       <label class="price">
         <input type="text" inputmode="decimal" enterkeyhint="send" placeholder="Prezzo" value="${esc(price)}" aria-label="Prezzo in euro" />
@@ -238,8 +278,8 @@ async function onPublish(card, it) {
   const input = $('.price input', card);
   const price = formatPrice(input.value);
   if (!price) return shake($('.price', card));
-  if (!store.settings.token || !store.settings.chatId) {
-    toast('Configura prima il bot Telegram', 'err');
+  if (session && (!session.bot || !session.chatId)) {
+    toast(session.bot ? 'Scegli prima la chat Telegram' : 'Bot Telegram non configurato', 'err');
     return openSettings();
   }
   if (card.dataset.busy) return;
@@ -248,40 +288,58 @@ async function onPublish(card, it) {
   card.dataset.busy = '1';
   btn.classList.add('loading');
   try {
-    const caption = buildCaption(store.settings.format, { title, price, link: it.url });
-    await publishProduct({ token: store.settings.token, chatId: store.settings.chatId, caption, image: it.image });
-    store.markPublished(it.id, { price, title, caption });
+    await store.publish(it.id, title, price);
     haptic(20);
     confetti(btn);
     toast(`Pubblicato: ${title}, ${price}€`, 'ok');
     await removeCard(card, 'publish');
-    renderCounts(); renderChips(); maybeEmpty();
+    afterChange();
   } catch (e) {
     btn.classList.remove('loading');
     delete card.dataset.busy;
+    if (e.status === 401) return showLogin();
     toast(e.message || 'Errore durante la pubblicazione', 'err');
+    if (e.status === 409) sync();
   }
 }
 
 async function onDiscard(card, it) {
   if (card.dataset.busy) return;
   card.dataset.busy = '1';
-  store.markDiscarded(it.id);
   haptic(10);
+  const req = store.discard(it.id);
   await removeCard(card, 'discard');
-  renderCounts(); renderChips(); maybeEmpty();
-  toast('Prodotto scartato', 'info', {
-    label: 'Annulla',
-    fn: () => { store.restore(it.id); withTransition(render); },
-  });
+  afterChange();
+  try {
+    await req;
+    toast('Prodotto scartato', 'info', {
+      label: 'Annulla',
+      fn: () => store.restore(it.id).then(() => withTransition(render)).catch((e) => toast(e.message, 'err')),
+    });
+  } catch (e) {
+    toast(e.message || 'Impossibile scartare', 'err');
+    withTransition(render);
+  }
 }
 
-function onRestore(card, it) {
+async function onRestore(card, it) {
   if (card.dataset.busy) return;
   card.dataset.busy = '1';
-  store.restore(it.id);
-  removeCard(card, 'discard').then(() => { renderCounts(); renderChips(); maybeEmpty(); });
-  toast('Articolo rimesso in valutazione', 'info');
+  const req = store.restore(it.id);
+  await removeCard(card, 'discard');
+  afterChange();
+  try {
+    await req;
+    toast('Articolo rimesso in valutazione', 'info');
+  } catch (e) {
+    toast(e.message || 'Impossibile ripristinare', 'err');
+    withTransition(render);
+  }
+}
+
+function afterChange() {
+  renderCounts(); renderChips(); maybeEmpty();
+  if (pendingRender) safeRender();
 }
 
 function maybeEmpty() {
@@ -339,16 +397,22 @@ function toast(msg, type = 'ok', action) {
 
 /* -------------------------------------------------------------- settings */
 
+function renderBotStatus() {
+  const box = $('#bot-status');
+  if (!session) { box.innerHTML = ''; return; }
+  box.classList.toggle('err', !session.bot);
+  box.innerHTML = session.bot
+    ? `<span class="dot"></span><div><strong>@${esc(session.bot.username)} collegato</strong><small>Attivo su tutti i dispositivi</small></div>`
+    : `<span class="dot"></span><div><strong>Bot non collegato</strong><small>${esc(session.botError || '')}</small></div>`;
+}
+
 function openSettings() {
-  const s = store.settings;
-  $('#tg-token').value = s.token;
-  $('#tg-chat').value = s.chatId;
-  $('#tg-format').value = s.format;
-  $('#data-url').value = s.dataUrl;
+  renderBotStatus();
+  $('#tg-chat').value = session?.chatId || '';
+  $('#tg-format').value = session?.format || '{titolo}, {prezzo}€';
   $('#chat-list').hidden = true;
   $('#sheet-backdrop').hidden = false;
   $('#settings').hidden = false;
-  setTimeout(() => (s.token ? $('#tg-chat') : $('#tg-token')).focus({ preventScroll: true }), 350);
 }
 function closeSettings() {
   const sheet = $('#settings');
@@ -356,13 +420,19 @@ function closeSettings() {
   sheet.classList.add('closing'); bd.classList.add('closing');
   setTimeout(() => { sheet.hidden = bd.hidden = true; sheet.classList.remove('closing'); bd.classList.remove('closing'); }, 280);
 }
-function readSettingsForm() {
-  return {
-    token: $('#tg-token').value.trim(),
-    chatId: $('#tg-chat').value.trim(),
-    format: $('#tg-format').value.trim() || '{titolo}, {prezzo}€',
-    dataUrl: $('#data-url').value.trim(),
-  };
+
+async function withLoading(btn, fn) {
+  btn.classList.add('loading');
+  try { await fn(); } catch (err) {
+    if (err.status === 401) showLogin();
+    else toast(err.message, 'err');
+  } finally { btn.classList.remove('loading'); }
+}
+
+async function saveSettings() {
+  const { data } = await store.api('settings', { method: 'POST', body: { chatId: $('#tg-chat').value.trim(), format: $('#tg-format').value.trim() } });
+  session = { ...session, ...data.settings };
+  renderBanner();
 }
 
 function bindSettings() {
@@ -376,70 +446,73 @@ function bindSettings() {
     else if (!$('#settings').hidden) closeSettings();
   });
 
-  $('#toggle-token').onclick = (e) => {
-    const inp = $('#tg-token');
-    inp.type = inp.type === 'password' ? 'text' : 'password';
-    e.target.textContent = inp.type === 'password' ? 'Mostra' : 'Nascondi';
-  };
-
   $('#settings-form').onsubmit = (e) => {
     e.preventDefault();
-    const prevUrl = store.settings.dataUrl;
-    store.saveSettings(readSettingsForm());
-    toast('Impostazioni salvate', 'ok');
-    closeSettings();
-    if (prevUrl !== store.settings.dataUrl) loadCatalog();
-    else render();
+    withLoading($('#settings-form [type=submit]'), async () => {
+      await saveSettings();
+      toast('Impostazioni salvate per tutti i dispositivi', 'ok');
+      closeSettings();
+    });
   };
 
-  $('#find-chat').onclick = async (e) => {
-    const btn = e.currentTarget;
-    const token = $('#tg-token').value.trim();
-    btn.classList.add('loading');
-    try {
-      const { bot, chats } = await findChats(token);
-      const list = $('#chat-list');
-      list.hidden = false;
-      list.innerHTML = chats.length
-        ? chats.map((c) => `<button type="button" data-id="${c.id}"><strong>${esc(c.title || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.username || c.id)}</strong><small>${esc(c.type)} · ID ${c.id}</small></button>`).join('')
-        : `<p class="hint">Nessuna chat trovata. Apri <a href="https://t.me/${esc(bot.username)}" target="_blank" rel="noopener">@${esc(bot.username)}</a>, premi Avvia e scrivi un messaggio, poi riprova.</p>`;
-      $$('button', list).forEach((b) => (b.onclick = () => { $('#tg-chat').value = b.dataset.id; list.hidden = true; toast('Chat selezionata', 'ok'); }));
-    } catch (err) {
-      toast(err.message, 'err');
-    } finally {
-      btn.classList.remove('loading');
-    }
-  };
+  $('#find-chat').onclick = (e) => withLoading(e.currentTarget, async () => {
+    const { data } = await store.api('chats');
+    const list = $('#chat-list');
+    list.hidden = false;
+    list.innerHTML = data.chats.length
+      ? data.chats.map((c) => `<button type="button" data-id="${esc(c.id)}"><strong>${esc(c.name)}</strong><small>${esc(c.type)} · ID ${esc(c.id)}</small></button>`).join('')
+      : `<p class="hint">Nessuna chat trovata. Apri <a href="https://t.me/${esc(data.bot.username)}" target="_blank" rel="noopener">@${esc(data.bot.username)}</a>, premi Avvia e scrivi un messaggio, poi riprova.</p>`;
+    $$('button', list).forEach((b) => (b.onclick = () => { $('#tg-chat').value = b.dataset.id; list.hidden = true; toast('Chat selezionata: premi Salva', 'ok'); }));
+  });
 
-  $('#test-tg').onclick = async (e) => {
-    const btn = e.currentTarget;
-    const s = readSettingsForm();
-    btn.classList.add('loading');
-    try {
-      await sendText({ token: s.token, chatId: s.chatId, text: '✅ Sacrilab 3D Print Shop Manager collegato correttamente.' });
-      toast('Messaggio di prova inviato!', 'ok');
-    } catch (err) {
-      toast(err.message, 'err');
-    } finally {
-      btn.classList.remove('loading');
-    }
-  };
+  $('#test-tg').onclick = (e) => withLoading(e.currentTarget, async () => {
+    await saveSettings();
+    await store.api('test', { method: 'POST' });
+    toast('Messaggio di prova inviato!', 'ok');
+  });
 
-  $('#export-state').onclick = () => {
-    const blob = new Blob([store.exportState()], { type: 'application/json' });
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `sacrilab-stato-${new Date().toISOString().slice(0, 10)}.json` });
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  };
-  $('#import-state').onchange = async (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
-    try { store.importState(await f.text()); render(); toast('Stato importato', 'ok'); } catch { toast('File non valido', 'err'); }
-    e.target.value = '';
-  };
+  $('#logout').onclick = () => { store.logout(); closeSettings(); showLogin(); };
+
   $('#reset-state').onclick = () => {
-    if (!confirm('Ripristinare tutti gli articoli pubblicati e scartati?')) return;
-    store.resetState(); render(); toast('Stato ripristinato', 'info');
+    if (!confirm('Rimettere in valutazione tutti gli articoli pubblicati e scartati, su tutti i dispositivi?')) return;
+    store.resetAll().then(() => { render(); toast('Tutti gli articoli sono di nuovo da valutare', 'info'); }).catch((err) => toast(err.message, 'err'));
+  };
+}
+
+/* ----------------------------------------------------------------- login */
+
+function showLogin(msg = '') {
+  $('#login').hidden = false;
+  $('#login-err').textContent = msg;
+  setTimeout(() => $('#login-pass').focus(), 200);
+}
+
+async function loadSession() {
+  const { data } = await store.api('session');
+  session = data;
+  renderBanner();
+}
+
+function bindLogin() {
+  $('#login-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = $('#login-btn');
+    store.setKey($('#login-pass').value);
+    btn.classList.add('loading');
+    try {
+      await loadSession();
+      $('#login').hidden = true;
+      $('#login-pass').value = '';
+      await sync();
+      render();
+    } catch (err) {
+      store.logout();
+      $('#login-err').textContent = err.message;
+      const card = $('.login-card');
+      card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
+    } finally {
+      btn.classList.remove('loading');
+    }
   };
 }
 
@@ -480,7 +553,7 @@ function bindUI() {
     qT = setTimeout(() => { ui.query = e.target.value; renderGrid(); }, 160);
   });
   $('#sort').addEventListener('change', (e) => { ui.sort = e.target.value; withTransition(renderGrid); });
-  $('#btn-refresh').onclick = () => loadCatalog();
+  $('#btn-refresh').onclick = () => sync({ manual: true });
 
   const grid = $('#grid');
   const itemOf = (card) => catalog.items.find((x) => String(x.id) === card.dataset.id);
@@ -522,6 +595,9 @@ function bindUI() {
   });
 
   $('#lightbox').onclick = () => ($('#lightbox').hidden = true);
+
+  // Aggiorna lo schermo rimandato mentre stavi scrivendo.
+  grid.addEventListener('focusout', () => setTimeout(() => { if (pendingRender) safeRender(); }, 150));
 }
 
 function ripple(btn, e) {
@@ -556,9 +632,28 @@ function registerSW() {
   }).catch(console.warn);
 }
 
-bindUI();
-bindSettings();
-requestAnimationFrame(moveIndicator);
-document.fonts?.ready.then(moveIndicator);
-loadCatalog({ silent: true });
-registerSW();
+async function boot() {
+  bindUI();
+  bindSettings();
+  bindLogin();
+  requestAnimationFrame(moveIndicator);
+  document.fonts?.ready.then(moveIndicator);
+  registerSW();
+
+  // Mostra subito i dati in cache, poi sincronizza.
+  fetchCatalog().then(render).catch(() => render());
+  if (!store.hasKey()) return showLogin();
+  try {
+    await loadSession();
+    await sync();
+  } catch (e) {
+    if (e.status === 401) return showLogin();
+    toast(e.message, 'err');
+  }
+
+  setInterval(() => { if (document.visibilityState === 'visible' && store.hasKey()) sync(); }, SYNC_MS);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && store.hasKey()) sync(); });
+  addEventListener('online', () => store.hasKey() && sync());
+}
+
+boot();

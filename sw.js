@@ -1,8 +1,8 @@
 // Service worker: app shell cache-first, catalogo network-first, immagini stale-while-revalidate.
-const VERSION = 'sacrilab-v1.1.0';
+const VERSION = 'sacrilab-v2.0.0';
 const SHELL = [
   './', 'manifest.webmanifest', 'css/styles.css',
-  'js/app.js', 'js/store.js', 'js/telegram.js',
+  'js/app.js', 'js/store.js',
   'icons/logo-white.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/favicon.png', 'icons/apple-touch-icon.png',
 ];
 const IMG_CACHE = 'sacrilab-img';
@@ -33,7 +33,22 @@ self.addEventListener('fetch', (e) => {
 
   if (url.hostname === 'api.telegram.org') return;
 
-  // Catalogo: sempre il più fresco, cache come fallback offline.
+  // API: sempre dal server. Il catalogo resta in cache solo come riserva offline.
+  if (url.origin === location.origin && url.pathname.includes('/api/')) {
+    if (!url.pathname.endsWith('/api/catalog')) return;
+    e.respondWith(
+      fetch(req).then((res) => {
+        if (res.status === 200) {
+          const copy = res.clone();
+          caches.open(VERSION).then((c) => c.put(url.pathname, copy));
+        }
+        return res;
+      }).catch(() => caches.match(url.pathname)),
+    );
+    return;
+  }
+
+  // File JSON statici: sempre il più fresco, cache come fallback offline.
   if (url.pathname.endsWith('.json') && url.origin === location.origin) {
     e.respondWith(
       fetch(req).then((res) => {

@@ -4,66 +4,102 @@ PWA per scegliere i modelli 3D più vendibili da [MakerWorld](https://makerworld
 
 ## Come funziona
 
-- **GitHub Actions** (3 volte al giorno) analizza MakerWorld e salva la selezione in `data/products.json`.
-- **Cloudflare Pages** pubblica l'app e si aggiorna da solo a ogni nuovo catalogo.
-- **L'app** invia a Telegram foto + «titolo, prezzo€» tramite @FlashShoppBot.
+- **Ogni 30 minuti** GitHub Actions analizza MakerWorld, aggiorna la selezione e la invia al sito su Cloudflare (`PUT /api/catalog`). Non fa commit: il sito non viene ricostruito a ogni aggiornamento.
+- **Cloudflare Pages** ospita l'app e le API (`functions/`). Catalogo, articoli pubblicati/scartati e impostazioni sono salvati in **Cloudflare KV**, quindi sono uguali su tutti i dispositivi.
+- **Il bot Telegram è collegato sul server**: il token sta nelle variabili di Cloudflare. Da qualsiasi dispositivo basta entrare con la password dell'app.
+- **L'app** si aggiorna da sola ogni minuto e quando la riapri: nuovi articoli e decisioni prese da altri dispositivi compaiono senza ricaricare.
 
-1. **Scraper** (`scraper/`): un browser headless visita MakerWorld (pagine di tendenza e ricerche per categoria), intercetta le risposte JSON del sito e raccoglie i modelli con statistiche (download, stampe, like, collezioni).
-2. **Selezione** (`scraper/score.mjs`): ogni modello riceve un punteggio di vendibilità da 35 a 99 basato su:
-   - popolarità (download, stampe, like, collezioni, commenti, in scala logaritmica);
-   - rapporto stampe/download e like/download (modelli che le persone stampano davvero);
-   - novità (pubblicati negli ultimi 30/90 giorni);
-   - parole chiave che indicano oggetti utili, da regalo, da esposizione o facili da stampare.
-   
-   **Nessun articolo viene escluso.** I modelli con marchi o personaggi di terzi e quelli con licenza *NonCommercial* restano nel catalogo con un badge giallo di avviso; file di test e ricambi per stampanti ricevono solo una penalità di punteggio. Le esclusioni si possono riattivare in `FILTERS` dentro `scraper/config.mjs`. La selezione è bilanciata tra 11 categorie (Casa, Cucina, Utensili, Gadget, Tech, Decorazione, Giochi, Giardino, Veicoli, Animali, Regali).
-3. **App**: mostra gli articoli selezionati; per ognuno puoi modificare il titolo, inserire il prezzo (solo il numero, in euro) e premere **Pubblica**, oppure **Scarta**. Pubblicati e scartati spariscono dalla lista e restano consultabili nelle rispettive schede (con possibilità di ripristino).
+### Selezione degli articoli
 
-Tutte le regole (categorie, parole chiave, limiti) sono in `scraper/config.mjs`.
+Ogni modello riceve un punteggio di vendibilità da 35 a 99 basato su:
+- popolarità (download, stampe, like, collezioni, commenti, in scala logaritmica);
+- rapporto stampe/download e like/download (modelli che le persone stampano davvero);
+- novità (pubblicati negli ultimi 30/90 giorni);
+- parole chiave che indicano oggetti utili, da regalo, da esposizione o facili da stampare.
 
-## Messa online su Cloudflare Pages
+**Nessun articolo viene escluso.** I modelli con marchi o personaggi di terzi e quelli con licenza *NonCommercial* hanno un badge giallo di avviso; file di test e ricambi per stampanti ricevono solo una penalità di punteggio. Le esclusioni si riattivano in `FILTERS` dentro `scraper/config.mjs`.
 
-1. Su GitHub, **Settings → Actions → General → Workflow permissions: Read and write** (serve allo scraper per salvare il catalogo).
-2. **Actions → «Aggiorna catalogo MakerWorld» → Run workflow** per generare il primo catalogo (poi gira da solo alle 05:17, 11:17 e 17:17 UTC).
-3. Su [dash.cloudflare.com](https://dash.cloudflare.com): **Workers & Pages → Create → Pages → Connect to Git**, autorizza GitHub e scegli `zsurann/sacrilab-3d-print-shop-manager`.
-4. Impostazioni di build:
+Ogni esecuzione analizza le pagine di tendenza più 2 categorie a rotazione (in circa 3 ore le copre tutte); gli articoli già trovati restano nel catalogo e vengono riclassificati a ogni giro. Avviando il workflow a mano con l'opzione **full** si analizzano tutte le categorie in una volta.
+
+## Configurazione
+
+### 1. Cloudflare Pages
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages → Create → Pages → Connect to Git** → scegli `zsurann/sacrilab-3d-print-shop-manager`.
+2. Impostazioni di build:
    | Campo | Valore |
    |---|---|
    | Production branch | `main` |
    | Framework preset | `None` |
    | Build command | `bash scripts/build-site.sh` |
    | Build output directory | `_site` |
-5. **Save and Deploy.** L'app sarà su `https://<nome-progetto>.pages.dev`. Ogni commit su `main` (compresi gli aggiornamenti automatici del catalogo) pubblica una nuova versione.
-6. (Facoltativo) **Custom domains** per usare un tuo dominio.
-7. Installa l'app:
-   - **iPhone**: Safari → Condividi → *Aggiungi alla schermata Home*;
-   - **Android**: Chrome → menu → *Installa app*;
-   - **PC**: icona di installazione nella barra degli indirizzi di Chrome/Edge.
+3. **Save and Deploy.**
 
-Il file `_headers` imposta la cache per Cloudflare (catalogo e service worker sempre aggiornati). In alternativa a Cloudflare puoi usare GitHub Pages avviando a mano il workflow «Pubblica PWA su GitHub Pages».
+### 2. Database KV
 
-Se lo scraper non trova modelli (ad es. MakerWorld cambia struttura o blocca l'accesso), il catalogo esistente non viene sovrascritto. Avvia il workflow con l'opzione **debug** per ottenere screenshot e log delle API tra gli *artifact* dell'esecuzione.
+1. **Workers & Pages → KV → Create namespace**, nome ad esempio `sacrilab`.
+2. Nel progetto Pages: **Settings → Bindings → Add → KV namespace**: *Variable name* `KV`, namespace `sacrilab`.
 
-## Configurare Telegram
+### 3. Variabili e segreti del progetto Pages
 
-1. Recupera il token del bot da [@BotFather](https://t.me/BotFather) (`/mybots` → FlashShoppBot → *API Token*).
-2. Nell'app apri **Impostazioni** e incolla il token.
-3. Scrivi un messaggio qualsiasi al bot (o aggiungilo al gruppo/canale dove vuoi pubblicare, come amministratore), poi premi **Trova** e seleziona la chat.
-4. Premi **Invia messaggio di prova**, poi **Salva**.
+**Settings → Variables and Secrets → Add** (tipo *Secret*):
 
-Il token è salvato solo nel browser del dispositivo (localStorage), non nella repository. Configuralo su ogni dispositivo che usi. Lo stato (pubblicati/scartati) si può trasferire con **Esporta/Importa stato**.
+| Nome | Valore |
+|---|---|
+| `APP_PASSWORD` | la password per entrare nell'app (scegline una lunga) |
+| `TELEGRAM_BOT_TOKEN` | token di @FlashShoppBot, da [@BotFather](https://t.me/BotFather) → `/mybots` → *API Token* |
+| `INGEST_TOKEN` | una stringa casuale lunga, la stessa del passo 4 (es. generata con `openssl rand -hex 32`) |
 
-Il formato della didascalia è personalizzabile (`{titolo}`, `{prezzo}`, `{link}`); quello predefinito è `{titolo}, {prezzo}€` → `supporto tagliere, 7€`.
+Facoltativi: `TELEGRAM_CHAT_ID` (chat predefinita) e `CAPTION_FORMAT` (didascalia predefinita).
+
+Dopo aver aggiunto binding e variabili: **Deployments → … → Retry deployment**, perché le modifiche valgono dal deploy successivo.
+
+### 4. GitHub (aggiornamento ogni 30 minuti)
+
+Nel repository: **Settings → Secrets and variables → Actions**:
+- scheda **Secrets** → *New repository secret* `INGEST_TOKEN` = lo stesso valore messo su Cloudflare;
+- scheda **Variables** → *New repository variable* `SITE_URL` = l'indirizzo del sito, es. `https://sacrilab-3d-print-shop-manager.pages.dev`.
+
+Poi **Actions → «Aggiorna catalogo MakerWorld» → Run workflow** (spunta *full* per il primo giro). Da lì in poi parte da solo ogni 30 minuti; GitHub può ritardare gli avvii programmati di qualche minuto.
+
+> GitHub sospende i workflow programmati dopo 60 giorni senza commit sul repository: se succede, riattivalo da **Actions** con *Enable workflow*.
+
+### 5. Telegram
+
+1. Apri l'app, entra con la password e premi **Impostazioni** (ingranaggio).
+2. Scrivi un messaggio qualsiasi a @FlashShoppBot (o aggiungilo come amministratore al gruppo/canale dove vuoi pubblicare), poi premi **Trova** e scegli la chat.
+3. **Salva**, poi **Messaggio di prova**.
+
+Chat e formato della didascalia (`{titolo}`, `{prezzo}`, `{link}`; predefinito `{titolo}, {prezzo}€` → `supporto tagliere, 7€`) valgono per tutti i dispositivi.
+
+### 6. Installare l'app
+
+- **iPhone**: Safari → Condividi → *Aggiungi alla schermata Home*;
+- **Android**: Chrome → menu → *Installa app*;
+- **PC**: icona di installazione nella barra degli indirizzi di Chrome/Edge.
+
+## Problemi comuni
+
+- **Catalogo vuoto**: controlla l'ultima esecuzione in *Actions*. Avviala con l'opzione **debug** per ottenere screenshot e log tra gli *artifact*. Se lo scraper non trova modelli il catalogo esistente non viene sovrascritto.
+- **«Database non collegato»** o **«Imposta la variabile APP_PASSWORD»**: manca il binding KV o una variabile; aggiungila e rifai il deploy.
+- **«Token di invio non valido» nel workflow**: `INGEST_TOKEN` su GitHub e su Cloudflare non coincidono.
 
 ## Sviluppo locale
 
 ```bash
-python3 -m http.server 8080
+cd scraper && npm install && npm test
 ```
 
 ```bash
-cd scraper && npm install && npx playwright install chromium && npm test && npm run scrape
+bash scripts/build-site.sh
 ```
+
+```bash
+npx wrangler pages dev _site --kv KV --binding APP_PASSWORD=prova INGEST_TOKEN=prova TELEGRAM_BOT_TOKEN=<token>
+```
+
+Per lo scraper in locale: `SITE_URL=http://localhost:8788 INGEST_TOKEN=prova npm run scrape` (dentro `scraper/`, dopo `npx playwright install chromium`).
 
 ## Nota sulle licenze
 
-Le esclusioni automatiche sono disattivate: prima di vendere una stampa controlla la licenza del modello su MakerWorld (badge su ogni scheda e link «apri su MakerWorld»). I badge gialli segnalano licenze *NonCommercial* e marchi/personaggi di terzi, la cui vendita può violare i diritti dell'autore o del titolare del marchio.
+Prima di vendere una stampa controlla la licenza del modello su MakerWorld (badge su ogni scheda e link «apri su MakerWorld»). I badge gialli segnalano licenze *NonCommercial* e marchi/personaggi di terzi, la cui vendita può violare i diritti dell'autore o del titolare del marchio.
