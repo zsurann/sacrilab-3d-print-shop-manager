@@ -118,7 +118,7 @@ function renderBanner() {
   if (!session) { banner.hidden = true; return; }
   if (!session.bot) {
     $('#banner-title').textContent = 'Bot Telegram non collegato';
-    $('#banner-text').textContent = session.botError || 'Configura il token del bot su Cloudflare.';
+    $('#banner-text').textContent = session.botError || 'Inserisci il token del bot nelle impostazioni.';
   } else {
     $('#banner-title').textContent = 'Scegli la chat Telegram';
     $('#banner-text').textContent = `Il bot @${session.bot.username} è collegato: indica dove pubblicare i prodotti.`;
@@ -408,6 +408,12 @@ function renderBotStatus() {
 
 function openSettings() {
   renderBotStatus();
+  $('#bot-token-field').hidden = Boolean(session?.botFromEnv);
+  $('#tg-token').value = '';
+  $('#new-pass').value = '';
+  $('#role-info').textContent = session?.role === 'owner'
+    ? 'Sei entrato con la password del proprietario.'
+    : 'Sei entrato con la password del gestore.';
   $('#tg-chat').value = session?.chatId || '';
   $('#tg-format').value = session?.format || '{titolo}, {prezzo}€';
   $('#chat-list').hidden = true;
@@ -471,7 +477,23 @@ function bindSettings() {
     toast('Messaggio di prova inviato!', 'ok');
   });
 
-  $('#logout').onclick = () => { store.logout(); closeSettings(); showLogin(); };
+  $('#save-token').onclick = (e) => withLoading(e.currentTarget, async () => {
+    const data = await store.saveBotToken($('#tg-token').value);
+    $('#tg-token').value = '';
+    await loadSession();
+    renderBotStatus();
+    toast(`Bot @${data.bot.username} collegato`, 'ok');
+  });
+
+  $('#change-pass').onclick = (e) => withLoading(e.currentTarget, async () => {
+    const pw = $('#new-pass').value;
+    if (pw.length < 6) throw new Error('La password deve avere almeno 6 caratteri.');
+    await store.changePassword(pw);
+    $('#new-pass').value = '';
+    toast('Password del gestore cambiata', 'ok');
+  });
+
+  $('#logout').onclick = async () => { await store.logout(); closeSettings(); showLogin(); };
 
   $('#reset-state').onclick = () => {
     if (!confirm('Rimettere in valutazione tutti gli articoli pubblicati e scartati, su tutti i dispositivi?')) return;
@@ -481,9 +503,30 @@ function bindSettings() {
 
 /* ----------------------------------------------------------------- login */
 
-function showLogin(msg = '') {
+let setupMode = false;
+
+function setLoginMode(needsSetup) {
+  setupMode = needsSetup;
+  $('#setup-fields').hidden = !needsSetup;
+  $('#login-switch').hidden = !needsSetup;
+  $('#login-sub').textContent = needsSetup ? 'Benvenuto! Crea la password del gestore' : '3D Print Shop Manager';
+  $('#login-pass-label').textContent = needsSetup ? 'Nuova password (almeno 6 caratteri)' : 'Password';
+  $('#login-pass').autocomplete = needsSetup ? 'new-password' : 'current-password';
+  $('#login-btn').textContent = needsSetup ? 'Crea password ed entra' : 'Entra';
+}
+
+async function showLogin(msg = '') {
+  store.forget();
   $('#login').hidden = false;
   $('#login-err').textContent = msg;
+  try {
+    const st = await store.authStatus();
+    setLoginMode(st.needsSetup);
+    $('#login-bot').closest('.field').hidden = st.botFromEnv;
+  } catch (e) {
+    setLoginMode(false);
+    $('#login-err').textContent = e.message;
+  }
   setTimeout(() => $('#login-pass').focus(), 200);
 }
 
@@ -494,19 +537,30 @@ async function loadSession() {
 }
 
 function bindLogin() {
+  $('#login-switch').onclick = () => setLoginMode(false);
   $('#login-form').onsubmit = async (e) => {
     e.preventDefault();
     const btn = $('#login-btn');
-    store.setKey($('#login-pass').value);
+    const pw = $('#login-pass').value;
+    $('#login-err').textContent = '';
     btn.classList.add('loading');
     try {
+      if (setupMode) {
+        if (pw.length < 6) throw new Error('La password deve avere almeno 6 caratteri.');
+        if (pw !== $('#login-pass2').value) throw new Error('Le due password non coincidono.');
+        await store.setup(pw, $('#login-bot').value.trim());
+      } else {
+        await store.login(pw);
+      }
       await loadSession();
       $('#login').hidden = true;
-      $('#login-pass').value = '';
+      for (const id of ['#login-pass', '#login-pass2', '#login-bot']) $(id).value = '';
       await sync();
       render();
+      if (setupMode) toast('Password creata! Ora scegli la chat Telegram', 'ok');
+      if (!session.bot || !session.chatId) openSettings();
     } catch (err) {
-      store.logout();
+      if (err.status === 409) setLoginMode(false);
       $('#login-err').textContent = err.message;
       const card = $('.login-card');
       card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');

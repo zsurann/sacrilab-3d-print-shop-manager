@@ -6,7 +6,7 @@ PWA per scegliere i modelli 3D più vendibili da [MakerWorld](https://makerworld
 
 - **Ogni 30 minuti** GitHub Actions analizza MakerWorld, aggiorna la selezione e la invia al sito su Cloudflare (`PUT /api/catalog`). Non fa commit: il sito non viene ricostruito a ogni aggiornamento.
 - **Cloudflare Pages** ospita l'app e le API (`functions/`). Catalogo, articoli pubblicati/scartati e impostazioni sono salvati in **Cloudflare KV**, quindi sono uguali su tutti i dispositivi.
-- **Il bot Telegram è collegato sul server**: il token sta nelle variabili di Cloudflare. Da qualsiasi dispositivo basta entrare con la password dell'app.
+- **Il bot Telegram è collegato sul server**: il token è salvato su Cloudflare, non sui dispositivi. Da qualsiasi dispositivo basta entrare con la password del gestore o del proprietario.
 - **L'app** si aggiorna da sola ogni minuto e quando la riapri: nuovi articoli e decisioni prese da altri dispositivi compaiono senza ricaricare.
 
 ### Selezione degli articoli
@@ -40,17 +40,16 @@ Ogni esecuzione analizza le pagine di tendenza più 2 categorie a rotazione (in 
 1. **Workers & Pages → KV → Create namespace**, nome ad esempio `sacrilab`.
 2. Nel progetto Pages: **Settings → Bindings → Add → KV namespace**: *Variable name* `KV`, namespace `sacrilab`.
 
-### 3. Variabili e segreti del progetto Pages
+### 3. Variabili segrete del progetto Pages
 
-**Settings → Variables and Secrets → Add** (tipo *Secret*):
+**Settings → Variables and Secrets → Add**, tipo **Secret**, ambiente *Production*:
 
 | Nome | Valore |
 |---|---|
-| `APP_PASSWORD` | la password per entrare nell'app (scegline una lunga) |
-| `TELEGRAM_BOT_TOKEN` | token di @FlashShoppBot, da [@BotFather](https://t.me/BotFather) → `/mybots` → *API Token* |
+| `OWNER_PASSWORD` | la password del proprietario: funziona sempre, anche se il gestore cambia la sua |
 | `INGEST_TOKEN` | una stringa casuale lunga, la stessa del passo 4 (es. generata con `openssl rand -hex 32`) |
 
-Facoltativi: `TELEGRAM_CHAT_ID` (chat predefinita) e `CAPTION_FORMAT` (didascalia predefinita).
+Facoltativi: `TELEGRAM_BOT_TOKEN` (se preferisci tenere il token del bot qui invece di inserirlo dall'app), `TELEGRAM_CHAT_ID` (chat predefinita), `CAPTION_FORMAT` (didascalia predefinita).
 
 Dopo aver aggiunto binding e variabili: **Deployments → … → Retry deployment**, perché le modifiche valgono dal deploy successivo.
 
@@ -64,13 +63,15 @@ Poi **Actions → «Aggiorna catalogo MakerWorld» → Run workflow** (spunta *f
 
 > GitHub sospende i workflow programmati dopo 60 giorni senza commit sul repository: se succede, riattivalo da **Actions** con *Enable workflow*.
 
-### 5. Telegram
+### 5. Primo accesso e Telegram
 
-1. Apri l'app, entra con la password e premi **Impostazioni** (ingranaggio).
-2. Scrivi un messaggio qualsiasi a @FlashShoppBot (o aggiungilo come amministratore al gruppo/canale dove vuoi pubblicare), poi premi **Trova** e scegli la chat.
-3. **Salva**, poi **Messaggio di prova**.
+1. Il gestore apre il sito: la prima volta compare **«Benvenuto! Crea la password del gestore»**. Sceglie la password (almeno 6 caratteri) e può incollare subito il token del bot (da [@BotFather](https://t.me/BotFather) → `/mybots` → il bot → *API Token*), oppure farlo dopo dalle impostazioni.
+2. Si aprono le **Impostazioni**: scrivi un messaggio qualsiasi a @FlashShoppBot (o aggiungilo come amministratore al gruppo/canale dove vuoi pubblicare), premi **Trova**, scegli la chat, **Salva** e poi **Messaggio di prova**.
+3. Su ogni altro dispositivo si entra con la password del gestore **oppure** con quella del proprietario (`OWNER_PASSWORD`). L'accesso resta memorizzato per un anno.
 
-Chat e formato della didascalia (`{titolo}`, `{prezzo}`, `{link}`; predefinito `{titolo}, {prezzo}€` → `supporto tagliere, 7€`) valgono per tutti i dispositivi.
+Dalle impostazioni si può cambiare la password del gestore (lo può fare anche il proprietario): i dispositivi del gestore dovranno entrare di nuovo, quelli del proprietario no. La password del proprietario si cambia solo da Cloudflare.
+
+Chat, token del bot e formato della didascalia (`{titolo}`, `{prezzo}`, `{link}`; predefinito `{titolo}, {prezzo}€` → `supporto tagliere, 7€`) valgono per tutti i dispositivi.
 
 ### 6. Installare l'app
 
@@ -81,7 +82,8 @@ Chat e formato della didascalia (`{titolo}`, `{prezzo}`, `{link}`; predefinito `
 ## Problemi comuni
 
 - **Catalogo vuoto**: controlla l'ultima esecuzione in *Actions*. Avviala con l'opzione **debug** per ottenere screenshot e log tra gli *artifact*. Se lo scraper non trova modelli il catalogo esistente non viene sovrascritto.
-- **«Database non collegato»** o **«Imposta la variabile APP_PASSWORD»**: manca il binding KV o una variabile; aggiungila e rifai il deploy.
+- **«Database non collegato»**: manca il binding KV con nome `KV`; aggiungilo e rifai il deploy.
+- **La password del proprietario non funziona**: controlla `OWNER_PASSWORD` (maiuscole/minuscole contano) e rifai il deploy.
 - **«Token di invio non valido» nel workflow**: `INGEST_TOKEN` su GitHub e su Cloudflare non coincidono.
 
 ## Sviluppo locale
@@ -95,7 +97,7 @@ bash scripts/build-site.sh
 ```
 
 ```bash
-npx wrangler pages dev _site --kv KV --binding APP_PASSWORD=prova INGEST_TOKEN=prova TELEGRAM_BOT_TOKEN=<token>
+npx wrangler pages dev _site --kv KV --binding OWNER_PASSWORD=prova INGEST_TOKEN=prova
 ```
 
 Per lo scraper in locale: `SITE_URL=http://localhost:8788 INGEST_TOKEN=prova npm run scrape` (dentro `scraper/`, dopo `npx playwright install chromium`).

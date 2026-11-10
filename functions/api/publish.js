@@ -1,5 +1,5 @@
 // Pubblica un articolo sul bot Telegram e lo segna come pubblicato per tutti i dispositivi.
-import { json, fail, getState, putState, getSettings, getCatalog } from '../../lib/server/store.js';
+import { json, fail, getState, putState, getSettings, getCatalog, getBotToken } from '../../lib/server/store.js';
 import { sendProductPhoto, formatPrice, buildCaption } from '../../lib/server/telegram.js';
 
 export async function onRequestPost({ request, env }) {
@@ -21,7 +21,7 @@ export async function onRequestPost({ request, env }) {
 
   const title = String(body.title || item.title).trim().slice(0, 300);
   const caption = buildCaption(settings.format, { title, price, link: item.url });
-  await sendProductPhoto({ token: env.TELEGRAM_BOT_TOKEN, chatId: settings.chatId, caption, image: item.image });
+  await sendProductPhoto({ token: await getBotToken(env), chatId: settings.chatId, caption, image: item.image });
 
   // Rilegge lo stato: un altro dispositivo potrebbe averlo cambiato nel frattempo.
   const fresh = await getState(env);

@@ -1,5 +1,5 @@
 // Stato dell'app: decisioni (pubblicati/scartati) condivise sul server, bozze locali.
-const KEY_AUTH = 'sacrilab.key.v2';
+const KEY_AUTH = 'sacrilab.session.v3';
 const KEY_DRAFTS = 'sacrilab.drafts.v2';
 const KEY_CACHE = 'sacrilab.cache.v2';
 
@@ -12,15 +12,15 @@ export class ApiError extends Error {
 
 let key = load(KEY_AUTH, '');
 export const hasKey = () => Boolean(key);
-export function setKey(k) { key = k; save(KEY_AUTH, k); }
-export function logout() { key = ''; try { localStorage.removeItem(KEY_AUTH); } catch { /* noop */ } }
+function setKey(k) { key = k || ''; save(KEY_AUTH, key); }
+export function forget() { key = ''; try { localStorage.removeItem(KEY_AUTH); } catch { /* noop */ } }
 
 export async function api(path, { method = 'GET', body, headers = {} } = {}) {
   let res;
   try {
     res = await fetch(`api/${path}`, {
       method,
-      headers: { 'X-App-Key': key, ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
+      headers: { 'X-Session': key, ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
       body: body ? JSON.stringify(body) : undefined,
       cache: 'no-store',
     });
@@ -34,6 +34,32 @@ export async function api(path, { method = 'GET', body, headers = {} } = {}) {
     throw new ApiError(msg, res.status);
   }
   return { data, res };
+}
+
+/* ---------- accesso ---------- */
+export async function authStatus() {
+  return (await api('auth/status')).data;
+}
+export async function login(password) {
+  const { data } = await api('auth/login', { method: 'POST', body: { password } });
+  setKey(data.token);
+  return data;
+}
+export async function setup(password, botToken) {
+  const { data } = await api('auth/setup', { method: 'POST', body: { password, botToken } });
+  setKey(data.token);
+  return data;
+}
+export async function logout() {
+  try { await api('auth/logout', { method: 'POST' }); } catch { /* già scaduta */ }
+  forget();
+}
+export async function changePassword(password) {
+  const { data } = await api('password', { method: 'POST', body: { password } });
+  if (data.token) setKey(data.token);
+}
+export async function saveBotToken(botToken) {
+  return (await api('bot', { method: 'POST', body: { botToken } })).data;
 }
 
 /* ---------- decisioni condivise ---------- */

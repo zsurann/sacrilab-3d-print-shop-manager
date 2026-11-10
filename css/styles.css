@@ -420,3 +420,5 @@ small.hint { margin: 6px 0 0; font-size: 12px; color: var(--text-3); }
 .bot-status .dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
 .bot-status.err .dot { background: var(--danger); box-shadow: 0 0 0 4px var(--danger-soft); }
 .bot-status small { display: block; color: var(--text-3); }
+.field .opt { font-style: normal; font-weight: 400; color: var(--text-3); }
+.link-btn { margin-top: 12px; border: 0; background: none; color: var(--text-2); font-size: 13px; text-decoration: underline; }

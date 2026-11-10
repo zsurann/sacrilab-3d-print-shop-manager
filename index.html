@@ -106,6 +106,14 @@
     <form class="sheet-body" id="settings-form" autocomplete="off">
       <h3>Bot Telegram</h3>
       <div class="bot-status" id="bot-status"></div>
+      <label class="field" id="bot-token-field">
+        <span>Token del bot</span>
+        <div class="field-row">
+          <input type="password" id="tg-token" placeholder="123456789:AA…" spellcheck="false" autocomplete="off" />
+          <button type="button" class="btn btn-ghost btn-sm" id="save-token">Collega</button>
+        </div>
+        <small class="hint">Da @BotFather → /mybots → il tuo bot → API Token. Resta salvato sul server, non sul dispositivo.</small>
+      </label>
       <label class="field">
         <span>Chat di destinazione</span>
         <div class="field-row">
@@ -127,6 +135,15 @@
       </div>
 
       <h3>Account</h3>
+      <p class="hint" id="role-info"></p>
+      <label class="field">
+        <span>Nuova password del gestore</span>
+        <div class="field-row">
+          <input type="password" id="new-pass" autocomplete="new-password" minlength="6" placeholder="Almeno 6 caratteri" />
+          <button type="button" class="btn btn-ghost btn-sm" id="change-pass">Cambia</button>
+        </div>
+        <small class="hint">Gli altri dispositivi del gestore dovranno entrare di nuovo con la nuova password.</small>
+      </label>
       <div class="sheet-actions wrap">
         <button type="button" class="btn btn-ghost" id="logout">Esci da questo dispositivo</button>
         <button type="button" class="btn btn-danger-ghost" id="reset-state">Rimetti tutto in valutazione</button>
@@ -145,12 +162,23 @@
     <form class="login-card" id="login-form">
       <div class="login-logo" aria-hidden="true"></div>
       <h1>Sacrilab</h1>
-      <p>3D Print Shop Manager</p>
+      <p id="login-sub">3D Print Shop Manager</p>
       <label class="field">
-        <span>Password</span>
+        <span id="login-pass-label">Password</span>
         <input type="password" id="login-pass" autocomplete="current-password" required />
       </label>
+      <div id="setup-fields" hidden>
+        <label class="field">
+          <span>Ripeti la password</span>
+          <input type="password" id="login-pass2" autocomplete="new-password" />
+        </label>
+        <label class="field">
+          <span>Token del bot Telegram <em class="opt">(facoltativo, anche dopo)</em></span>
+          <input type="password" id="login-bot" placeholder="123456789:AA…" spellcheck="false" autocomplete="off" />
+        </label>
+      </div>
       <button type="submit" class="btn btn-primary" id="login-btn">Entra</button>
+      <button type="button" class="link-btn" id="login-switch" hidden>Ho già una password</button>
       <small class="hint" id="login-err"></small>
     </form>
   </div>
