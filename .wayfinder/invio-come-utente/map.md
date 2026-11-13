@@ -16,6 +16,8 @@ Una decisione chiara e completa su come, premendo «Pubblica», l'account Telegr
 
 ## Decisions so far
 
+- [Un account Telegram personale può inviare da Cloudflare Pages Functions?](01-mtproto-su-cloudflare.md): sì con mtcute, ma non nelle Functions gratuite (CPU); consigliato Worker + Durable Object, oppure piano a pagamento; no browser.
+
 - [Regole e rischi di Telegram per un account personale automatizzato](02-regole-telegram-account-automatici.md): consentito, rischio basso a questo ritmo; evitare numeri nuovi/VoIP, sessioni multiple, IP variabili; un api_id per numero.
 
 ## Not yet specified
