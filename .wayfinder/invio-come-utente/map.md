@@ -16,6 +16,8 @@ Una decisione chiara e completa su come, premendo «Pubblica», l'account Telegr
 
 ## Decisions so far
 
+- [Regole e rischi di Telegram per un account personale automatizzato](02-regole-telegram-account-automatici.md): consentito, rischio basso a questo ritmo; evitare numeri nuovi/VoIP, sessioni multiple, IP variabili; un api_id per numero.
+
 ## Not yet specified
 
 - Cosa vede il gestore quando l'account del proprietario è scollegato o la sessione scade (blocco dell'app? avviso? coda di invii?).
