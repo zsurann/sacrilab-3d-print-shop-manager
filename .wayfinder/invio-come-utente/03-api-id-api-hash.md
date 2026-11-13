@@ -4,7 +4,7 @@ title: Ottenere api_id e api_hash del proprietario da my.telegram.org
 labels: [wayfinder:task]
 parent: map
 status: open
-assignee:
+assignee: zsurann
 blocked-by: [02]
 ---
 
