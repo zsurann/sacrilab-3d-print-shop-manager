@@ -118,12 +118,14 @@ function render() {
 function renderBanner() {
   const banner = $('#setup-banner');
   const owner = session?.role === 'owner';
+  // Solo il proprietario vede e cambia le impostazioni: per tutti gli altri il sito è solo da usare.
+  $('#btn-settings').hidden = !owner;
   banner.hidden = !session || Boolean(session.account?.linked);
   $('#banner-setup').hidden = !owner;
   $('#banner-title').textContent = owner ? 'Collega il tuo account Telegram' : 'In attesa del proprietario';
   $('#banner-text').textContent = owner
     ? 'Serve per inviare gli articoli a @FlashShoppBot dal tuo account.'
-    : 'Il proprietario deve collegare il suo account Telegram: fino ad allora «Pubblica» è bloccato.';
+    : 'Il sito non è ancora pronto: «Pubblica» si attiva appena il proprietario completa la configurazione.';
 }
 
 function renderCounts() {
@@ -439,9 +441,6 @@ function openSettings() {
   renderAccount();
   for (const id of ['#tg-code-field', '#tg-pw-field']) $(id).hidden = true;
   for (const id of ['#tg-code', '#tg-pw', '#new-pass']) $(id).value = '';
-  $('#role-info').textContent = session?.role === 'owner'
-    ? 'Sei entrato con la password del proprietario.'
-    : 'Sei entrato con la password del gestore.';
   $('#tg-format').value = session?.format || '{titolo}, {prezzo}€';
   $('#sheet-backdrop').hidden = false;
   $('#settings').hidden = false;
@@ -508,6 +507,7 @@ function bindSettings() {
         await loadSession();
         renderAccount();
         toast('Account Telegram collegato!', 'ok');
+        sync();
       }
     });
   });
@@ -527,7 +527,7 @@ function bindSettings() {
     if (pw.length < 6) throw new Error('La password deve avere almeno 6 caratteri.');
     await store.changePassword(pw);
     $('#new-pass').value = '';
-    toast('Password del gestore cambiata', 'ok');
+    toast('Password del gestore salvata', 'ok');
   });
 
   $('#logout').onclick = async () => { await store.logout(); showLogin(); };
@@ -540,7 +540,6 @@ function bindSettings() {
 
 /* ----------------------------------------------------------------- login */
 
-let loginMode = 'login'; // 'login' | 'setup'
 
 function openLoginOverlay() {
   const el = $('#login');
@@ -558,18 +557,6 @@ function closeLoginOverlay() {
   return new Promise((r) => setTimeout(() => { el.hidden = true; el.classList.remove('leaving'); r(); }, 520));
 }
 
-function setLoginMode(mode) {
-  loginMode = mode;
-  const setup = mode === 'setup';
-  $('#pass2-field').hidden = !setup;
-  $('#login-switch').hidden = !setup;
-  $('#login-form').dataset.mode = mode;
-  $('#login-sub').textContent = setup ? 'Benvenuto! Crea la password del gestore' : '3D Print Shop Manager';
-  $('#login-pass-label').textContent = setup ? 'Nuova password (almeno 6 caratteri)' : 'Password';
-  $('#login-pass').autocomplete = setup ? 'new-password' : 'current-password';
-  $('#login-btn').textContent = setup ? 'Crea password ed entra' : 'Entra';
-}
-
 function clearLocalData() {
   catalog = { items: [], categories: [], generatedAt: null, nextReleaseAt: 0, batchSize: 5 };
   try { localStorage.removeItem(FEED_CACHE); } catch { /* noop */ }
@@ -584,13 +571,6 @@ async function showLogin(msg = '') {
   clearLocalData();
   openLoginOverlay();
   $('#login-err').textContent = msg;
-  try {
-    const st = await store.authStatus();
-    setLoginMode(st.needsSetup ? 'setup' : 'login');
-  } catch (e) {
-    setLoginMode('login');
-    $('#login-err').textContent = e.message;
-  }
   setTimeout(() => $('#login-pass').focus(), 200);
 }
 
@@ -601,7 +581,6 @@ async function loadSession() {
 }
 
 function bindLogin() {
-  $('#login-switch').onclick = () => setLoginMode('login');
   // Mostra/nascondi password.
   $('#login-form').addEventListener('click', (e) => {
     const b = e.target.closest('[data-eye]');
@@ -615,18 +594,11 @@ function bindLogin() {
     e.preventDefault();
     const btn = $('#login-btn');
     const pw = $('#login-pass').value;
-    const mode = loginMode;
     $('#login-err').textContent = '';
     btn.classList.add('loading');
     try {
-      if (mode === 'setup') {
-        if (pw.length < 6) throw new Error('La password deve avere almeno 6 caratteri.');
-        if (pw !== $('#login-pass2').value) throw new Error('Le due password non coincidono.');
-        await store.setup(pw);
-      } else {
-        if (!pw) throw new Error('Inserisci la password.');
-        await store.login(pw);
-      }
+      if (!pw) throw new Error('Inserisci la password.');
+      await store.login(pw);
       await loadSession();
       btn.classList.remove('loading');
       btn.classList.add('success');
@@ -635,11 +607,9 @@ function bindLogin() {
       render();
       await closeLoginOverlay();
       btn.classList.remove('success');
-      for (const id of ['#login-pass', '#login-pass2']) { $(id).value = ''; $(id).type = 'password'; }
-      if (mode === 'setup') toast('Password creata!', 'ok');
+      $('#login-pass').value = ''; $('#login-pass').type = 'password';
       if (!session.account?.linked && session.role === 'owner') openSettings();
     } catch (err) {
-      if (err.status === 409) setLoginMode('login');
       $('#login-err').textContent = err.message;
       const card = $('.login-card');
       card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');

@@ -84,6 +84,7 @@ Torna in **Workers & Pages** → progetto **sacrilab** (il sito):
 1. **Settings** → **Bindings** → **Add**:
    - **KV namespace**: *Variable name* `KV`, namespace `sacrilab` → **Save**.
    - **Service binding**: *Variable name* `SENDER`, servizio `sacrilab-sender` → **Save**.
+   - **Workers AI**: *Variable name* `AI` → **Save** (traduce i titoli in italiano e aggiunge le emoji; gratis entro la quota giornaliera di Cloudflare).
 2. **Settings** → **Variables and Secrets** → **Add**, tipo **Secret**:
 
    | Variable name | Value |
@@ -109,17 +110,18 @@ Il primo giro dura circa 15 minuti. Quando la riga diventa verde ✅ il catalogo
 
 ---
 
-## Parte 6 — Primo accesso
+## Parte 6 — Configurare il sito (una volta sola, solo il proprietario)
 
-1. **Il gestore** apre l'indirizzo del sito: compare **«Benvenuto! Crea la password del gestore»**. Sceglie una password (almeno 6 caratteri), la ripete e preme **Crea password ed entra**. Trova subito i primi 5 articoli, ma «Pubblica» resta bloccato finché il proprietario non collega il suo account.
-2. **Il proprietario** apre il sito ed entra con la **sua** password. Si apre **Impostazioni → Account Telegram**:
-   - scrive il suo numero con il prefisso (`+39…`) → **Invia codice**;
-   - inserisce il codice arrivato nell'app Telegram → **Conferma**;
-   - se richiesta, inserisce la password della verifica in due passaggi → **Conferma**.
+1. Apri l'indirizzo del sito ed entra con la **password del proprietario**. Si aprono le **Impostazioni**.
+2. **Password del gestore**: scrivi la password che darai al gestore → **Cambia**.
+3. **Account Telegram**:
+   - scrivi il tuo numero con il prefisso (`+39…`) → **Invia codice**;
+   - inserisci il codice arrivato nell'app Telegram → **Conferma**;
+   - se richiesta, inserisci la password della verifica in due passaggi → **Conferma**.
 
-   Compare **«Collegato»** con il suo nome: da ora «Pubblica» funziona per tutti, su tutti i dispositivi.
+   Compare **«Collegato»** con il tuo nome e arrivano subito i primi 5 articoli, con i titoli in italiano.
 
-La password del gestore viene chiesta **solo la prima volta in assoluto**: dopo, su questo e su tutti gli altri dispositivi, l'app chiede soltanto di inserirla.
+Fatto: da ora chi apre il sito vede solo la schermata **Entra**. Il gestore entra con la sua password e usa il sito; non vede le impostazioni e non può cambiare nulla. Prima di questo passaggio il sito non mostra articoli.
 
 ---
 
@@ -137,7 +139,10 @@ L'accesso resta memorizzato per un anno su ogni dispositivo.
 ## Domande frequenti
 
 **Il gestore ha dimenticato la password.**
-Entra con la password del proprietario → **Impostazioni** → *Nuova password del gestore* → **Cambia**.
+Entra con la password del proprietario → **Impostazioni** → *Password del gestore* → **Cambia**.
+
+**I titoli non sono in italiano.**
+Manca il binding **Workers AI** `AI` nel progetto **sacrilab** (Parte 4) oppure è finita la quota gratuita del giorno: in quel caso restano i titoli originali, modificabili a mano. Gli articoli arrivati prima dell'attivazione non vengono ritradotti.
 
 **Voglio cambiare la password del proprietario.**
 Su Cloudflare: progetto **sacrilab** → **Settings → Variables and Secrets** → modifica `OWNER_PASSWORD`, poi **Retry deployment**.

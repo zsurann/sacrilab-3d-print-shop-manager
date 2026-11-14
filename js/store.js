@@ -45,16 +45,8 @@ export async function api(path, { method = 'GET', body, headers = {} } = {}) {
 }
 
 /* ---------- accesso ---------- */
-export async function authStatus() {
-  return (await api('auth/status')).data;
-}
 export async function login(password) {
   const { data } = await api('auth/login', { method: 'POST', body: { password } });
-  setKey(data.token);
-  return data;
-}
-export async function setup(password) {
-  const { data } = await api('auth/setup', { method: 'POST', body: { password } });
   setKey(data.token);
   return data;
 }
@@ -63,8 +55,7 @@ export async function logout() {
   forget();
 }
 export async function changePassword(password) {
-  const { data } = await api('password', { method: 'POST', body: { password } });
-  if (data.token) setKey(data.token);
+  await api('password', { method: 'POST', body: { password } });
 }
 export async function account(action, extra = {}) {
   return (await api('account', { method: 'POST', body: { action, ...extra } })).data;

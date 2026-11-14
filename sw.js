@@ -1,5 +1,5 @@
 // Service worker: app e catalogo dalla rete (copia salvata solo offline), immagini dalla cache.
-const VERSION = 'sacrilab-v3.0.0';
+const VERSION = 'sacrilab-v3.1.0';
 const SHELL = [
   './', 'manifest.webmanifest', 'css/styles.css',
   'js/app.js', 'js/store.js',

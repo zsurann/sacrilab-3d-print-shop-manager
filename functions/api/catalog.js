@@ -1,7 +1,6 @@
 // GET: catalogo per l'app (pubblico). PUT: aggiornamento dallo scraper (Authorization: Bearer INGEST_TOKEN).
 import { json, fail, safeEqual, getCatalog } from '../../lib/server/store.js';
 import { releaseIfDue } from '../../lib/server/queue.js';
-import { needsSetup } from '../../lib/server/auth.js';
 
 export async function onRequestGet({ request, env }) {
   const catalog = await getCatalog(env, request);
@@ -16,7 +15,6 @@ export async function onRequestPut({ request, env }) {
   const catalog = await request.json().catch(() => null);
   if (!catalog || !Array.isArray(catalog.items) || !catalog.items.length) return fail(400, 'Catalogo vuoto o non valido.');
   await env.KV.put('catalog', JSON.stringify(catalog));
-  // I nuovi articoli vengono sbloccati solo dopo che il gestore ha configurato il sito.
-  const released = (await needsSetup(env)) ? 0 : Object.keys((await releaseIfDue(env, catalog)).items).length;
+  const released = Object.keys((await releaseIfDue(env, catalog)).items).length;
   return json({ ok: true, count: catalog.items.length, released });
 }

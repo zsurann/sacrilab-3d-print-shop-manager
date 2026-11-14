@@ -145,14 +145,13 @@
       </div>
 
       <h3>Account</h3>
-      <p class="hint" id="role-info"></p>
       <label class="field">
-        <span>Nuova password del gestore</span>
+        <span>Password del gestore</span>
         <div class="field-row">
           <input type="password" id="new-pass" autocomplete="new-password" minlength="6" placeholder="Almeno 6 caratteri" />
           <button type="button" class="btn btn-ghost btn-sm" id="change-pass">Cambia</button>
         </div>
-        <small class="hint">Gli altri dispositivi del gestore dovranno entrare di nuovo con la nuova password.</small>
+        <small class="hint">Imposta o cambia la password con cui entra il gestore. I suoi dispositivi dovranno entrare di nuovo.</small>
       </label>
       <div class="sheet-actions wrap">
         <button type="button" class="btn btn-ghost" id="logout">Esci da questo dispositivo</button>
@@ -179,13 +178,8 @@
           <span id="login-pass-label">Password</span>
           <div class="pass-wrap"><input type="password" id="login-pass" autocomplete="current-password" /><button type="button" class="eye" data-eye aria-label="Mostra password" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         </label>
-        <label class="field" id="pass2-field" hidden>
-          <span>Ripeti la password</span>
-          <div class="pass-wrap"><input type="password" id="login-pass2" autocomplete="new-password" /><button type="button" class="eye" data-eye aria-label="Mostra password" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
-        </label>
       </div>
       <button type="submit" class="btn btn-primary" id="login-btn">Entra</button>
-      <button type="button" class="link-btn" id="login-switch" hidden>Ho già una password</button>
       <small class="hint login-err" id="login-err" role="alert"></small>
     </form>
   </div>

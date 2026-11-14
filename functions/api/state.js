@@ -5,7 +5,7 @@ export async function onRequestGet({ env }) {
   return json({ ok: true, state: await getState(env) });
 }
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, data }) {
   const { op, id } = await request.json().catch(() => ({}));
   const state = await getState(env);
   const key = id == null ? '' : String(id);
@@ -17,6 +17,7 @@ export async function onRequestPost({ request, env }) {
     delete state.published[key];
     delete state.discarded[key];
   } else if (op === 'reset') {
+    if (data.session.role !== 'owner') return fail(403, 'Solo il proprietario può cambiare le impostazioni.');
     state.published = {};
     state.discarded = {};
   } else {

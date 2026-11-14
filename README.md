@@ -17,12 +17,12 @@ Tu devi solo guardare le proposte, decidere un prezzo e premere **Pubblica**: l'
 ## Come funziona
 
 ### 5 nuovi articoli ogni mezz'ora
-Ogni 30 minuti compaiono **5 nuovi articoli** da valutare, scelti tra i migliori disponibili in quel momento. Quelli che non hai ancora valutato restano in lista finché non decidi. In alto vedi quanto manca al prossimo gruppo di 5.
+Ogni 30 minuti compaiono **5 nuovi articoli** da valutare, scelti tra i migliori disponibili in quel momento, con il titolo **già tradotto in italiano** e un paio di **emoji** legate all'oggetto (es. «🔪🥒 Supporto per tagliere»). Quelli che non hai ancora valutato restano in lista finché non decidi. In alto vedi quanto manca al prossimo gruppo di 5.
 
 ### Valutare un articolo
 Per ogni articolo vedi la foto, il titolo, la categoria e i numeri che contano (download, mi piace, stampe). Puoi:
 
-- **Modificare il titolo**: toccalo e scrivi come vuoi che appaia su Telegram (es. tradurlo in italiano).
+- **Modificare il titolo**: toccalo e correggilo se vuoi, prima di pubblicare.
 - **Inserire il prezzo**: solo il numero, l'euro viene aggiunto da solo. Puoi usare i decimali (es. `7,50`).
 - **Pubblica**: la foto con «titolo, prezzo€» arriva subito nella chat con @FlashShoppBot, inviata dal tuo account, e l'articolo passa tra i *Pubblicati*. Se Telegram non accetta l'invio, compare un avviso e l'articolo resta da valutare.
 - **Scarta**: l'articolo sparisce dalla lista. Se hai sbagliato, premi **Annulla** nel messaggio che compare.
@@ -48,11 +48,10 @@ Cerca per parola, filtra per categoria (Casa, Cucina, Utensili, Gadget, Tech, De
 
 ## Accesso e dispositivi
 
-- **Il gestore** sceglie la sua password la prima volta che apre l'app. Da quel momento, su qualsiasi dispositivo, basta inserire la password.
-- **Il proprietario** collega una volta il suo account Telegram dalle Impostazioni (numero, codice ricevuto su Telegram, eventuale password della verifica in due passaggi). Finché non è collegato, il gestore può vedere e scartare gli articoli ma «Pubblica» resta bloccato.
-- Il proprietario ha anche una sua password personale che funziona sempre, anche se il gestore cambia la propria.
+- **Il proprietario** configura il sito una volta sola, entrando con la sua password: sceglie la password del gestore e collega il suo account Telegram (numero, codice ricevuto su Telegram, eventuale password della verifica in due passaggi). Da quel momento arrivano gli articoli.
+- **Il gestore** entra con la password che gli ha dato il proprietario e usa soltanto il sito: valuta, prezza, pubblica e scarta. Non vede né può cambiare nessuna impostazione.
 - **Tutto è sincronizzato**: se pubblichi dal telefono, l'articolo risulta pubblicato anche sul computer. L'app si aggiorna da sola ogni minuto.
-- Dalle **Impostazioni** (icona ⚙️) si vede se l'account Telegram è collegato, si cambia il formato della didascalia, si cambia la password del gestore e si esce dal dispositivo. Solo il proprietario può collegare o scollegare il suo account.
+- Le **Impostazioni** (icona ⚙️) le vede solo il proprietario: account Telegram, formato della didascalia, password del gestore.
 
 ## Installala come app
 

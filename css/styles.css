@@ -434,7 +434,6 @@ body.locked { overflow: hidden; }
 .login-card .login-err { margin: 12px 0 0; color: var(--danger); min-height: 1.2em; font-weight: 600; }
 .login-card .login-err:not(:empty) { animation: rise .3s var(--ease) both; }
 .login-card.shake { animation: shake .4s; }
-.login-card #pass2-field:not([hidden]) { animation: expand .45s var(--ease) both; }
 @keyframes expand { from { opacity: 0; transform: translateY(-8px); } }
 
 .login-logo {
