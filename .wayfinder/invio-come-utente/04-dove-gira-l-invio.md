@@ -4,7 +4,7 @@ title: Dove gira l'invio dall'account personale
 labels: [wayfinder:grilling]
 parent: map
 status: open
-assignee:
+assignee: zsurann
 blocked-by: [01]
 ---
 
