@@ -4,7 +4,7 @@ title: Prova di invio dall'account personale a @FlashShoppBot
 labels: [wayfinder:prototype]
 parent: map
 status: open
-assignee:
+assignee: zsurann
 blocked-by: [03, 04]
 ---
 
