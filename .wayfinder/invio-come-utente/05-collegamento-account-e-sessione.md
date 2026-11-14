@@ -4,7 +4,7 @@ title: Come si collega l'account del proprietario e dove si custodisce la sessio
 labels: [wayfinder:grilling]
 parent: map
 status: open
-assignee:
+assignee: zsurann
 blocked-by: [04]
 ---
 
