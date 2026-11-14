@@ -21,10 +21,11 @@ Una decisione chiara e completa su come, premendo «Pubblica», l'account Telegr
 - [Regole e rischi di Telegram per un account personale automatizzato](02-regole-telegram-account-automatici.md): consentito, rischio basso a questo ritmo; evitare numeri nuovi/VoIP, sessioni multiple, IP variabili; un api_id per numero.
 
 - [Ottenere api_id e api_hash del proprietario da my.telegram.org](03-api-id-api-hash.md): fatto; credenziali custodite dal proprietario, fuori dal repository.
+- [Dove gira l'invio dall'account personale](04-dove-gira-l-invio.md): Worker separato + Durable Object con mtcute, piano gratuito da confermare con la prova; se fallisce l'invio si blocca e avvisa, niente ripiego sul bot.
 
 ## Not yet specified
 
-- Cosa vede il gestore quando l'account del proprietario è scollegato o la sessione scade (blocco dell'app? avviso? coda di invii?).
+- Cosa vede il gestore quando l'account del proprietario è scollegato in modo duraturo (oltre all'errore su «Pubblica»: avviso fisso? chi viene avvisato?).
 - Come passare dalla configurazione attuale (token del bot obbligatorio al primo accesso) a quella nuova senza rompere i siti già configurati.
 - Limiti di frequenza e gestione errori/ritentativi degli invii dall'account personale.
 
