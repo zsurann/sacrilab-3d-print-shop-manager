@@ -1,0 +1,16 @@
+{
+  "name": "sacrilab-sender-prototipo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "test": "node --test src/secret-box.test.js"
+  },
+  "dependencies": {
+    "@mtcute/wasm": "0.32.8",
+    "@mtcute/web": "0.32.8"
+  },
+  "devDependencies": {
+    "wrangler": "3.114.17"
+  }
+}
