@@ -24,11 +24,13 @@ Una decisione chiara e completa su come, premendo «Pubblica», l'account Telegr
 - [Dove gira l'invio dall'account personale](04-dove-gira-l-invio.md): Worker separato + Durable Object con mtcute, piano gratuito da confermare con la prova; se fallisce l'invio si blocca e avvisa, niente ripiego sul bot.
 - [Come si collega l'account del proprietario e dove si custodisce la sessione](05-collegamento-account-e-sessione.md): collegamento nell'app (numero → codice → 2FA), solo il proprietario, sessione solo nel servizio di invio; il gestore vede lo stato.
 - [Che fine fa il token del bot](06-token-del-bot.md): eliminato; destinazione fissa @FlashShoppBot; senza account collegato il gestore entra ma «Pubblica» resta bloccato con avviso.
+- [Prova di invio dall'account personale a @FlashShoppBot](07-prova-invio.md): funziona sul piano gratuito; il prototipo in `sender/` è la base dell'implementazione.
 
 ## Not yet specified
 
-- Passaggio dei siti già configurati alla versione nuova: cosa fare dei dati salvati (token del bot, chat scelta) e dei gestori già entrati.
-- Limiti di frequenza e gestione errori/ritentativi degli invii dall'account personale.
+Nessuna decisione aperta: la strada è libera. I due punti rimasti in sospeso seguono dalle decisioni prese e sono dettagli di implementazione:
+- Siti già configurati: token del bot e chat salvati vengono ignorati e cancellati (vedi «Che fine fa il token del bot»); gestori e password restano come sono.
+- Limiti di frequenza: `FLOOD_WAIT` → l'errore su «Pubblica» dice quanti secondi attendere; `PEER_FLOOD` → avviso di account limitato; in entrambi i casi l'articolo resta da valutare (vedi «Dove gira l'invio dall'account personale» e «Regole e rischi di Telegram per un account personale automatizzato»).
 
 ## Out of scope
 
