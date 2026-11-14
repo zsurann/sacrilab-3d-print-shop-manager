@@ -1,0 +1,14 @@
+# PROTOTIPO del servizio di invio dall'account Telegram del proprietario.
+name = "sacrilab-sender"
+main = "src/index.js"
+compatibility_date = "2025-07-18"
+compatibility_flags = ["nodejs_compat"]
+
+[[durable_objects.bindings]]
+name = "SENDER"
+class_name = "Sender"
+
+# Durable Object con storage SQLite: disponibile anche nel piano gratuito.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Sender"]

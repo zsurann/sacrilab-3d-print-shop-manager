@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prova invio Sacrilab</title>
+<style>
+  :root { color-scheme: light dark; font: 16px/1.45 -apple-system, system-ui, sans-serif; }
+  body { max-width: 520px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 22px; } h2 { font-size: 16px; margin-top: 26px; }
+  input, button { font: inherit; width: 100%; box-sizing: border-box; padding: 11px 12px; border-radius: 10px; border: 1px solid #8886; margin: 4px 0; }
+  button { background: #2aabee; color: #fff; border: 0; font-weight: 700; cursor: pointer; }
+  pre { white-space: pre-wrap; background: #8881; padding: 12px; border-radius: 10px; min-height: 2em; }
+  small { color: #888; }
+</style>
+</head>
+<body>
+<h1>Prova di invio dal tuo account</h1>
+<small>Pagina di prova del servizio di invio. Non la condividere.</small>
+
+<h2>1. Chiave del servizio</h2>
+<input id="key" type="password" placeholder="Il valore di SENDER_KEY" autocomplete="off" />
+<button data-go="status">Controlla collegamento</button>
+
+<h2>2. Collega il tuo account Telegram</h2>
+<input id="phone" type="tel" placeholder="Numero, es. +393331234567" />
+<button data-go="start">Invia codice</button>
+<input id="code" inputmode="numeric" placeholder="Codice ricevuto su Telegram" />
+<button data-go="code">Conferma codice</button>
+<input id="password" type="password" placeholder="Password verifica in due passaggi (se richiesta)" />
+<button data-go="password">Conferma password</button>
+
+<h2>3. Prova di invio a @FlashShoppBot</h2>
+<input id="image" value="https://picsum.photos/id/1080/800/600.jpg" />
+<input id="caption" value="supporto tagliere, 7€" />
+<button data-go="send">Invia prova</button>
+
+<h2>Risultato</h2>
+<pre id="out"></pre>
+
+<button data-go="logout" style="background:#e5484d">Scollega account</button>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  $('key').value = sessionStorage.getItem('k') || '';
+  const routes = {
+    status: ['GET', 'status'],
+    start: ['POST', 'login/start', () => ({ phone: $('phone').value.trim() })],
+    code: ['POST', 'login/code', () => ({ code: $('code').value.trim() })],
+    password: ['POST', 'login/password', () => ({ password: $('password').value })],
+    send: ['POST', 'send', () => ({ image: $('image').value.trim(), caption: $('caption').value })],
+    logout: ['POST', 'logout'],
+  };
+  document.addEventListener('click', async (e) => {
+    const go = e.target.dataset.go;
+    if (!go) return;
+    sessionStorage.setItem('k', $('key').value);
+    const [method, path, body] = routes[go];
+    $('out').textContent = '…';
+    const t0 = performance.now();
+    try {
+      const r = await fetch(`api/${path}`, {
+        method,
+        headers: { Authorization: `Bearer ${$('key').value}`, 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body()) : undefined,
+      });
+      const data = await r.json();
+      $('out').textContent = `HTTP ${r.status} · ${Math.round(performance.now() - t0)} ms totali\n${JSON.stringify(data, null, 2)}`;
+    } catch (err) {
+      $('out').textContent = String(err);
+    }
+  });
+</script>
+</body>
+</html>
