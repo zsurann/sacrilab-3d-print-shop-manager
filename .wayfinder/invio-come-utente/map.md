@@ -23,11 +23,11 @@ Una decisione chiara e completa su come, premendo «Pubblica», l'account Telegr
 - [Ottenere api_id e api_hash del proprietario da my.telegram.org](03-api-id-api-hash.md): fatto; credenziali custodite dal proprietario, fuori dal repository.
 - [Dove gira l'invio dall'account personale](04-dove-gira-l-invio.md): Worker separato + Durable Object con mtcute, piano gratuito da confermare con la prova; se fallisce l'invio si blocca e avvisa, niente ripiego sul bot.
 - [Come si collega l'account del proprietario e dove si custodisce la sessione](05-collegamento-account-e-sessione.md): collegamento nell'app (numero → codice → 2FA), solo il proprietario, sessione solo nel servizio di invio; il gestore vede lo stato.
+- [Che fine fa il token del bot](06-token-del-bot.md): eliminato; destinazione fissa @FlashShoppBot; senza account collegato il gestore entra ma «Pubblica» resta bloccato con avviso.
 
 ## Not yet specified
 
-- Cosa vede il gestore quando l'account del proprietario è scollegato in modo duraturo (oltre all'errore su «Pubblica»: avviso fisso? chi viene avvisato?).
-- Come passare dalla configurazione attuale (token del bot obbligatorio al primo accesso) a quella nuova senza rompere i siti già configurati.
+- Passaggio dei siti già configurati alla versione nuova: cosa fare dei dati salvati (token del bot, chat scelta) e dei gestori già entrati.
 - Limiti di frequenza e gestione errori/ritentativi degli invii dall'account personale.
 
 ## Out of scope
