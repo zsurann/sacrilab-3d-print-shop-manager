@@ -4,7 +4,7 @@ title: Che fine fa il token del bot
 labels: [wayfinder:grilling]
 parent: map
 status: open
-assignee:
+assignee: zsurann
 blocked-by: []
 ---
 
