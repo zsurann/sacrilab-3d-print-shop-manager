@@ -57,8 +57,8 @@
 
     <div class="setup-banner" id="setup-banner" hidden>
       <div>
-        <strong id="banner-title">Collega il bot Telegram</strong>
-        <span id="banner-text">Scegli la chat in cui pubblicare i prodotti.</span>
+        <strong id="banner-title">Collega il tuo account Telegram</strong>
+        <span id="banner-text">Serve per inviare gli articoli a @FlashShoppBot.</span>
       </div>
       <button class="btn btn-primary btn-sm" id="banner-setup">Configura</button>
     </div>
@@ -108,33 +108,39 @@
       <button class="icon-btn" data-close aria-label="Chiudi"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <form class="sheet-body" id="settings-form" autocomplete="off">
-      <h3>Bot Telegram</h3>
+      <h3>Account Telegram</h3>
       <div class="bot-status" id="bot-status"></div>
-      <label class="field" id="bot-token-field">
-        <span>Token del bot</span>
-        <div class="field-row">
-          <input type="password" id="tg-token" placeholder="123456789:AA…" spellcheck="false" autocomplete="off" />
-          <button type="button" class="btn btn-ghost btn-sm" id="save-token">Collega</button>
-        </div>
-        <small class="hint">Da @BotFather → /mybots → il tuo bot → API Token. Resta salvato sul server, non sul dispositivo.</small>
-      </label>
-      <label class="field">
-        <span>Chat di destinazione</span>
-        <div class="field-row">
-          <input type="text" id="tg-chat" placeholder="es. 123456789 oppure @miocanale" spellcheck="false" />
-          <button type="button" class="btn btn-ghost btn-sm" id="find-chat">Trova</button>
-        </div>
-        <small class="hint">Scrivi un messaggio qualsiasi al bot su Telegram (o aggiungilo come amministratore al canale), poi premi «Trova».</small>
-      </label>
-      <div class="chat-list" id="chat-list" hidden></div>
+      <div id="tg-link" hidden>
+        <label class="field">
+          <span>Il tuo numero Telegram</span>
+          <div class="field-row">
+            <input type="tel" id="tg-phone" placeholder="+39 333 1234567" autocomplete="tel" />
+            <button type="button" class="btn btn-ghost btn-sm" data-acc="start">Invia codice</button>
+          </div>
+          <small class="hint">Telegram ti manda un codice nell'app.</small>
+        </label>
+        <label class="field" id="tg-code-field" hidden>
+          <span>Codice ricevuto su Telegram</span>
+          <div class="field-row">
+            <input type="text" id="tg-code" inputmode="numeric" autocomplete="one-time-code" />
+            <button type="button" class="btn btn-ghost btn-sm" data-acc="code">Conferma</button>
+          </div>
+        </label>
+        <label class="field" id="tg-pw-field" hidden>
+          <span>Password della verifica in due passaggi</span>
+          <div class="field-row">
+            <input type="password" id="tg-pw" autocomplete="off" />
+            <button type="button" class="btn btn-ghost btn-sm" data-acc="password">Conferma</button>
+          </div>
+        </label>
+      </div>
+      <div class="sheet-actions wrap"><button type="button" class="btn btn-danger-ghost" id="tg-unlink" hidden>Scollega account Telegram</button></div>
       <label class="field">
         <span>Formato didascalia</span>
         <input type="text" id="tg-format" placeholder="{titolo}, {prezzo}€" />
-        <small class="hint">Variabili: {titolo}, {prezzo}, {link}</small>
+        <small class="hint">Variabili: {titolo}, {prezzo}, {link}. Vale per tutti i dispositivi.</small>
       </label>
-      <p class="hint">Queste impostazioni valgono per tutti i dispositivi.</p>
       <div class="sheet-actions">
-        <button type="button" class="btn btn-ghost" id="test-tg">Messaggio di prova</button>
         <button type="submit" class="btn btn-primary">Salva</button>
       </div>
 
@@ -177,19 +183,6 @@
           <span>Ripeti la password</span>
           <div class="pass-wrap"><input type="password" id="login-pass2" autocomplete="new-password" /><button type="button" class="eye" data-eye aria-label="Mostra password" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         </label>
-      </div>
-      <div class="field" id="bot-field" hidden>
-        <label for="login-bot" class="field-head">Token del bot Telegram <b class="req">Obbligatorio</b></label>
-        <div class="pass-wrap"><input type="password" id="login-bot" placeholder="es. 123456789:AAH4k…" spellcheck="false" autocomplete="off" autocapitalize="off" /><button type="button" class="eye" data-eye aria-label="Mostra token" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
-        <details class="howto">
-          <summary>Come trovo il token?</summary>
-          <ol>
-            <li>Apri Telegram e cerca <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> (ha la spunta blu).</li>
-            <li>Scrivi <code>/mybots</code> e tocca il tuo bot (es. FlashShoppBot).</li>
-            <li>Tocca <b>API Token</b>: copia il codice che appare, simile a <code>123456789:AAH4k…</code>.</li>
-            <li>Incollalo qui sopra. Senza il token non si può proseguire.</li>
-          </ol>
-        </details>
       </div>
       <button type="submit" class="btn btn-primary" id="login-btn">Entra</button>
       <button type="button" class="link-btn" id="login-switch" hidden>Ho già una password</button>

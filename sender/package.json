@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "deploy": "wrangler deploy",
-    "test": "node --test src/secret-box.test.js"
+    "test": "node --test src/secret-box.test.js src/errors.test.js"
   },
   "dependencies": {
     "@mtcute/wasm": "0.32.8",

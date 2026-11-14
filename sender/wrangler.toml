@@ -1,4 +1,4 @@
-# PROTOTIPO del servizio di invio dall'account Telegram del proprietario.
+# Servizio di invio: manda gli articoli a @FlashShoppBot dall'account Telegram del proprietario.
 name = "sacrilab-sender"
 main = "src/index.js"
 compatibility_date = "2025-07-18"

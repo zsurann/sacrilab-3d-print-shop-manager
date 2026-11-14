@@ -1,33 +1,31 @@
 # Guida alla configurazione
 
-Questa guida spiega, passo per passo, come mettere online Sacrilab 3D Print Shop Manager e collegarla al bot Telegram. Va fatta **una volta sola**. Tempo necessario: circa 30 minuti.
+Questa guida spiega, passo per passo, come mettere online Sacrilab 3D Print Shop Manager e collegarla al tuo account Telegram, così che gli articoli arrivino a **@FlashShoppBot inviati da te**. Va fatta **una volta sola**. Tempo necessario: circa 40 minuti.
 
 Ti servono:
 - un account **GitHub** (dove si trova il progetto);
-- un account **Cloudflare** gratuito (dove gira il sito): [dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up);
-- **Telegram** sul telefono, con l'account che ha creato il bot.
+- un account **Cloudflare** gratuito (dove girano il sito e il servizio di invio): [dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up);
+- **Telegram** sul telefono, con il tuo account personale.
 
-Prepara anche, in un posto sicuro, due cose che userai più avanti:
+Prepara in un posto sicuro (es. un gestore di password) queste cose che userai più avanti:
 - **la password del proprietario**: una password solo tua, che funzionerà sempre;
-- **il codice di collegamento**: una sequenza lunga di lettere e numeri a caso (almeno 40 caratteri, senza spazi), che serve a GitHub per inviare i nuovi articoli al sito. Ad esempio puoi farla generare dal tuo gestore di password.
+- **tre codici casuali**, ognuno di almeno 40 lettere e numeri a caso, senza spazi:
+  - il **codice di collegamento** (`INGEST_TOKEN`): serve a GitHub per inviare i nuovi articoli al sito;
+  - la **chiave del servizio** (`SENDER_KEY`): serve al sito per usare il servizio di invio;
+  - la **chiave della sessione** (`SESSION_KEY`): cifra l'accesso al tuo account Telegram.
 
 ---
 
-## Parte 1 — Trovare il token del bot Telegram
+## Parte 1 — Credenziali Telegram (api_id e api_hash)
 
-Il token è la "chiave" che permette all'app di pubblicare a nome del bot. Ha questo aspetto: `123456789:AAH4kZx…` (un numero, i due punti e una lunga serie di lettere e numeri).
+Servono perché il servizio possa inviare dal tuo account.
 
-1. Apri Telegram e cerca **@BotFather** (ha la spunta blu di verifica). Aprilo e premi **Avvia**.
-2. Scrivi `/mybots` e invia.
-3. Compare l'elenco dei tuoi bot: tocca **FlashShoppBot**.
-4. Tocca **API Token**.
-5. BotFather risponde con il token: tienilo premuto e copialo.
-
-Il token servirà al gestore nella Parte 5. Trattalo come una password: chi lo possiede può scrivere a nome del bot.
-
-**Il bot non compare in `/mybots`?** Solo l'account che ha creato il bot vede il token. Usa quell'account, oppure crea un nuovo bot: scrivi `/newbot` a BotFather, scegli un nome e un username che finisca con `bot`, e alla fine riceverai direttamente il token.
-
-**Il token è finito in mani sbagliate?** In BotFather: `/mybots` → il bot → **API Token** → **Revoke current token**. Riceverai un token nuovo: inseriscilo nell'app in **Impostazioni → Token del bot → Collega**.
+1. Apri [my.telegram.org](https://my.telegram.org), inserisci il tuo numero con il prefisso (es. `+39…`) e il codice che ti arriva nell'app Telegram.
+2. Apri **API development tools**.
+3. Compila: *App title* `Sacrilab Shop Publisher`, *Short name* `sacrilabpub`, *URL* vuoto, *Platform* `Web`, *Description* `invio annunci al mio bot @FlashShoppBot`. Non usare la parola «Telegram» nel nome.
+4. Salva e copia **api_id** (un numero) e **api_hash** nel tuo gestore di password. Non condividerli con nessuno.
+5. Se il modulo dà «ERROR»: togli la VPN, prova un altro browser o un altro *Short name*, oppure riprova più tardi. Ogni numero può avere un solo api_id.
+6. Nell'app Telegram attiva la **verifica in due passaggi** (Impostazioni → Privacy e sicurezza) e apri **@FlashShoppBot** premendo **Avvia**.
 
 ---
 
@@ -35,8 +33,8 @@ Il token servirà al gestore nella Parte 5. Trattalo come una password: chi lo p
 
 ### 2.1 Collegare il progetto
 1. Entra su [dash.cloudflare.com](https://dash.cloudflare.com).
-2. Nel menu a sinistra apri **Workers & Pages** → **Create** → scheda **Pages** → **Connect to Git** (a volte si chiama *Import an existing Git repository*).
-3. Collega il tuo account GitHub e autorizza il repository `sacrilab-3d-print-shop-manager`.
+2. Nel menu a sinistra apri **Workers & Pages** → **Create** → scheda **Pages** → **Connect to Git**.
+3. Collega il tuo account GitHub e scegli il repository `sacrilab-3d-print-shop-manager`.
 4. Compila i campi così:
 
    | Campo | Cosa scrivere |
@@ -47,81 +45,85 @@ Il token servirà al gestore nella Parte 5. Trattalo come una password: chi lo p
    | Build command | `bash scripts/build-site.sh` |
    | Build output directory | `_site` |
 
-5. Premi **Save and Deploy** e aspetta che finisca (circa un minuto). **Annota l'indirizzo del sito** che Cloudflare ti mostra.
+5. Premi **Save and Deploy**. **Annota l'indirizzo del sito.**
 
 ### 2.2 Creare il database
-1. Nel menu a sinistra apri **Storage & Databases → KV** (in alcune versioni è dentro *Workers & Pages → KV*).
+1. Nel menu a sinistra apri **Storage & Databases → KV**.
 2. Premi **Create**, scrivi il nome `sacrilab` e conferma.
-
-### 2.3 Collegare il database al sito
-1. Torna in **Workers & Pages** → apri il progetto **sacrilab** → **Settings** → **Bindings** → **Add** → **KV namespace**.
-2. *Variable name*: `KV` (esattamente così, maiuscolo). *KV namespace*: `sacrilab`.
-3. Premi **Save**.
-
-### 2.4 Inserire le password segrete
-Sempre nel progetto: **Settings** → **Variables and Secrets** → **Add**. Aggiungi due variabili, scegliendo come tipo **Secret**:
-
-| Variable name | Value |
-|---|---|
-| `OWNER_PASSWORD` | la password del proprietario |
-| `INGEST_TOKEN` | il codice di collegamento |
-
-Premi **Save**.
-
-### 2.5 Pubblicare di nuovo
-Vai su **Deployments**, sull'ultima pubblicazione premi **⋯** → **Retry deployment**. Senza questo passaggio il database e le password non vengono letti.
 
 ---
 
-## Parte 3 — Collegare l'aggiornamento automatico (GitHub)
+## Parte 3 — Creare il servizio di invio
+
+È il pezzo che invia gli articoli dal tuo account. Gira su Cloudflare, separato dal sito, ed è l'unico posto dove resta salvato l'accesso al tuo account Telegram.
+
+1. **Workers & Pages** → **Create** → scheda **Workers** → **Import a repository**.
+2. Scegli `sacrilab-3d-print-shop-manager` → **Next**.
+3. Compila:
+   - *Project name*: `sacrilab-sender` (esattamente così)
+   - *Build command*: vuoto
+   - *Deploy command*: `cd sender && npm ci && npx wrangler deploy`
+4. Premi **Deploy** e aspetta che finisca.
+5. Apri il Worker **sacrilab-sender** → **Settings** → **Variables and Secrets** → **Add**, tipo **Secret**:
+
+   | Variable name | Value |
+   |---|---|
+   | `API_ID` | il tuo api_id (Parte 1) |
+   | `API_HASH` | il tuo api_hash (Parte 1) |
+   | `SESSION_KEY` | la chiave della sessione |
+   | `SENDER_KEY` | la chiave del servizio |
+
+6. Salva e rifai il deploy: **Deployments** → ultimo deploy → **⋯** → **Retry deployment**.
+
+---
+
+## Parte 4 — Collegare tutto al sito
+
+Torna in **Workers & Pages** → progetto **sacrilab** (il sito):
+
+1. **Settings** → **Bindings** → **Add**:
+   - **KV namespace**: *Variable name* `KV`, namespace `sacrilab` → **Save**.
+   - **Service binding**: *Variable name* `SENDER`, servizio `sacrilab-sender` → **Save**.
+2. **Settings** → **Variables and Secrets** → **Add**, tipo **Secret**:
+
+   | Variable name | Value |
+   |---|---|
+   | `OWNER_PASSWORD` | la password del proprietario |
+   | `INGEST_TOKEN` | il codice di collegamento |
+   | `SENDER_KEY` | la **stessa** chiave del servizio usata nella Parte 3 |
+
+3. **Deployments** → ultimo deploy → **⋯** → **Retry deployment**.
+
+---
+
+## Parte 5 — Collegare l'aggiornamento automatico (GitHub)
 
 È GitHub che, ogni 30 minuti, cerca nuovi articoli su MakerWorld e li manda al sito.
 
 1. Apri il repository su GitHub → **Settings** → **Secrets and variables** → **Actions**.
-2. Scheda **Secrets** → **New repository secret**:
-   - *Name*: `INGEST_TOKEN`
-   - *Secret*: lo **stesso** codice di collegamento usato su Cloudflare.
-3. Scheda **Variables** → **New repository variable**:
-   - *Name*: `SITE_URL`
-   - *Value*: l'indirizzo del sito annotato prima, ad esempio `https://sacrilab.pages.dev` (senza `/` finale).
-4. Apri la scheda **Actions** del repository → **Aggiorna catalogo MakerWorld** → **Run workflow** → **Run workflow**.
+2. Scheda **Secrets** → **New repository secret**: *Name* `INGEST_TOKEN`, *Secret* lo **stesso** codice di collegamento usato su Cloudflare.
+3. Scheda **Variables** → **New repository variable**: *Name* `SITE_URL`, *Value* l'indirizzo del sito, es. `https://sacrilab.pages.dev` (senza `/` finale).
+4. Scheda **Actions** → **Aggiorna catalogo MakerWorld** → **Run workflow**.
 
-Il primo giro dura circa 15 minuti e analizza tutte le categorie. Quando la riga diventa verde ✅ il catalogo è pronto. Da qui in poi parte da solo ogni 30 minuti.
-
-Se il sito su GitHub Pages era stato attivato in passato, spegnilo: **Settings → Pages → Source: None**.
+Il primo giro dura circa 15 minuti. Quando la riga diventa verde ✅ il catalogo è pronto; poi riparte da solo ogni 30 minuti.
 
 ---
 
-## Parte 4 — Scegliere dove pubblicare su Telegram
+## Parte 6 — Primo accesso
 
-Il bot può pubblicare in tre posti. Decidi prima quale vuoi usare:
+1. **Il gestore** apre l'indirizzo del sito: compare **«Benvenuto! Crea la password del gestore»**. Sceglie una password (almeno 6 caratteri), la ripete e preme **Crea password ed entra**. Trova subito i primi 5 articoli, ma «Pubblica» resta bloccato finché il proprietario non collega il suo account.
+2. **Il proprietario** apre il sito ed entra con la **sua** password. Si apre **Impostazioni → Account Telegram**:
+   - scrive il suo numero con il prefisso (`+39…`) → **Invia codice**;
+   - inserisce il codice arrivato nell'app Telegram → **Conferma**;
+   - se richiesta, inserisce la password della verifica in due passaggi → **Conferma**.
 
-- **Chat privata con il bot** (solo tu vedi i messaggi): apri il bot su Telegram, premi **Avvia** e scrivi un messaggio qualsiasi, ad esempio `ciao`.
-- **Gruppo**: aggiungi il bot al gruppo, poi scrivi nel gruppo `/start@FlashShoppBot` (così il bot "vede" il gruppo).
-- **Canale**: apri il canale → *Amministratori* → aggiungi il bot come amministratore con il permesso **Pubblica messaggi**. Poi pubblica un messaggio qualsiasi nel canale.
+   Compare **«Collegato»** con il suo nome: da ora «Pubblica» funziona per tutti, su tutti i dispositivi.
 
----
-
-## Parte 5 — Primo accesso del gestore
-
-1. Il gestore apre l'indirizzo del sito.
-2. Compare **«Benvenuto! Crea la password del gestore e collega il bot»**:
-   - sceglie una password (almeno 6 caratteri) e la ripete;
-   - incolla il **token del bot** della Parte 1. È **obbligatorio**: senza un token valido non si può proseguire. Se non sai dove trovarlo, tocca **«Come trovo il token?»** sotto il campo.
-3. Preme **Crea password ed entra**. Compaiono subito i primi 5 articoli.
-4. Si apre il pannello **Impostazioni**:
-   - premi **Trova**: compare l'elenco delle chat che hanno scritto al bot (Parte 4). Tocca quella giusta;
-   - premi **Salva**, poi **Messaggio di prova**: su Telegram deve arrivare «✅ Sacrilab 3D Print Shop Manager è collegato a questa chat».
-
-**«Trova» non mostra la chat o dà errore?** Puoi scrivere il chat ID a mano nel campo *Chat di destinazione*:
-- per un **canale pubblico** basta il suo nome con la chiocciola, es. `@miocanale`;
-- per una **chat privata o un gruppo**, inoltra un messaggio di quella chat al bot [@userinfobot](https://t.me/userinfobot): ti risponde con l'ID (un numero, per i gruppi negativo, es. `-1001234567890`).
-
-La password viene chiesta **solo la prima volta in assoluto**: dopo, su questo e su tutti gli altri dispositivi, l'app chiede soltanto di inserirla.
+La password del gestore viene chiesta **solo la prima volta in assoluto**: dopo, su questo e su tutti gli altri dispositivi, l'app chiede soltanto di inserirla.
 
 ---
 
-## Parte 6 — Usare l'app su altri dispositivi
+## Parte 7 — Usare l'app su altri dispositivi
 
 Apri l'indirizzo del sito e inserisci la password del gestore (oppure quella del proprietario). Per averla come app:
 - **iPhone**: Safari → *Condividi* → *Aggiungi alla schermata Home*;
@@ -135,25 +137,34 @@ L'accesso resta memorizzato per un anno su ogni dispositivo.
 ## Domande frequenti
 
 **Il gestore ha dimenticato la password.**
-Entra con la password del proprietario → **Impostazioni** → *Nuova password del gestore* → **Cambia**. I dispositivi del gestore dovranno entrare di nuovo con la nuova password.
+Entra con la password del proprietario → **Impostazioni** → *Nuova password del gestore* → **Cambia**.
 
 **Voglio cambiare la password del proprietario.**
-Su Cloudflare: progetto **sacrilab** → **Settings → Variables and Secrets** → modifica `OWNER_PASSWORD`, poi **Deployments → Retry deployment**.
+Su Cloudflare: progetto **sacrilab** → **Settings → Variables and Secrets** → modifica `OWNER_PASSWORD`, poi **Retry deployment**.
 
-**Voglio cambiare il bot o il token.**
-**Impostazioni → Token del bot** → incolla il nuovo token → **Collega**.
+**Voglio scollegare il mio account Telegram.**
+Entra con la password del proprietario → **Impostazioni** → **Scollega account Telegram**. In emergenza anche da Telegram: Impostazioni → Dispositivi → termina la sessione «mtcute».
+
+**«Pubblica» dice «Telegram chiede di attendere N secondi».**
+Telegram limita temporaneamente gli invii troppo ravvicinati: aspetta il tempo indicato e riprova. L'articolo resta da valutare.
+
+**«Account Telegram scollegato»** o **«In attesa che il proprietario colleghi l'account Telegram»**.
+La sessione non vale più (es. è stata terminata da Telegram → Dispositivi): il proprietario deve ricollegarla dalle Impostazioni.
+
+**«Servizio di invio non collegato».**
+Manca il *Service binding* `SENDER` o il segreto `SENDER_KEY` nel progetto **sacrilab** (Parte 4), oppure non è stato rifatto il deploy.
+
+**«SENDER_KEY diversa tra il sito e il servizio di invio».**
+La chiave del servizio deve essere identica nel Worker **sacrilab-sender** (Parte 3) e nel sito **sacrilab** (Parte 4).
 
 **Non compaiono articoli.**
-Controlla su GitHub, scheda **Actions**, che l'ultima esecuzione di *Aggiorna catalogo MakerWorld* sia verde ✅. Se è rossa ❌, aprila e controlla l'errore: di solito `INGEST_TOKEN` è diverso tra GitHub e Cloudflare, oppure `SITE_URL` è scritto male.
+Su GitHub, scheda **Actions**, l'ultima esecuzione di *Aggiorna catalogo MakerWorld* deve essere verde ✅. Se è rossa ❌, di solito `INGEST_TOKEN` è diverso tra GitHub e Cloudflare, oppure `SITE_URL` è scritto male.
 
 **Compare «Database non collegato».**
-Manca il collegamento del database (Parte 2.3) oppure non è stato rifatto il deploy (Parte 2.5).
-
-**La password del proprietario non funziona.**
-Controlla `OWNER_PASSWORD` su Cloudflare (maiuscole e minuscole contano) e rifai il deploy.
+Manca il binding KV `KV` (Parte 4) oppure non è stato rifatto il deploy.
 
 **Sul telefono vedo ancora una versione vecchia.**
-Chiudi l'app del tutto e riaprila con internet attivo: carica da sola l'ultima versione.
+Chiudi l'app del tutto e riaprila con internet attivo.
 
 **Dopo due mesi gli articoli non arrivano più.**
-GitHub sospende gli aggiornamenti automatici dopo 60 giorni senza modifiche al repository. Vai in **Actions → Aggiorna catalogo MakerWorld** e premi **Enable workflow**.
+GitHub sospende gli aggiornamenti automatici dopo 60 giorni senza modifiche al repository: **Actions → Aggiorna catalogo MakerWorld → Enable workflow**.

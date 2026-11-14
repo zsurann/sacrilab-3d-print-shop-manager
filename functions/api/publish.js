@@ -1,6 +1,6 @@
-// Pubblica un articolo sul bot Telegram e lo segna come pubblicato per tutti i dispositivi.
-import { json, fail, getState, putState, getSettings, getCatalog, getBotToken } from '../../lib/server/store.js';
-import { sendProductPhoto, formatPrice, buildCaption } from '../../lib/server/telegram.js';
+// Invia l'articolo a @FlashShoppBot dall'account del proprietario e lo segna come pubblicato per tutti i dispositivi.
+import { json, fail, getState, putState, getSettings, getCatalog } from '../../lib/server/store.js';
+import { sender, formatPrice, buildCaption } from '../../lib/server/sender.js';
 import { getQueue } from '../../lib/server/queue.js';
 
 export async function onRequestPost({ request, env }) {
@@ -18,11 +18,10 @@ export async function onRequestPost({ request, env }) {
   if (state.published[id]) return fail(409, `Già pubblicato a ${state.published[id].price}€.`);
 
   const settings = await getSettings(env);
-  if (!settings.chatId) return fail(400, 'Seleziona la chat Telegram nelle impostazioni.');
 
   const title = String(body.title || item.title).trim().slice(0, 300);
   const caption = buildCaption(settings.format, { title, price, link: item.url });
-  await sendProductPhoto({ token: await getBotToken(env), chatId: settings.chatId, caption, image: item.image });
+  await sender(env, 'send', { image: item.image, caption });
 
   // Rilegge lo stato: un altro dispositivo potrebbe averlo cambiato nel frattempo.
   const fresh = await getState(env);

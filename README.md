@@ -2,7 +2,7 @@
 
 <h1 align="center">Sacrilab 3D Print Shop Manager</h1>
 
-<p align="center">L'app che sceglie per te gli oggetti stampati in 3D più vendibili<br/>e li pubblica sul tuo canale Telegram con foto e prezzo.</p>
+<p align="center">L'app che sceglie per te gli oggetti stampati in 3D più vendibili<br/>e li manda a @FlashShoppBot dal tuo account Telegram, con foto e prezzo.</p>
 
 ---
 
@@ -10,7 +10,7 @@
 
 Ogni giorno su [MakerWorld](https://makerworld.com/it) vengono pubblicati migliaia di modelli 3D. Sacrilab li analizza al posto tuo e ti propone solo quelli con più possibilità di essere venduti: oggetti utili per la casa, la cucina e l'ufficio, utensili, gadget, decorazioni, giochi, idee regalo e molto altro.
 
-Tu devi solo guardare le proposte, decidere un prezzo e premere **Pubblica**: l'app invia al bot Telegram la foto dell'oggetto con la didascalia nel formato
+Tu devi solo guardare le proposte, decidere un prezzo e premere **Pubblica**: l'app manda a **@FlashShoppBot**, dal tuo account Telegram personale (come se lo scrivessi tu), la foto dell'oggetto con la didascalia nel formato
 
 > **supporto tagliere, 7€**
 
@@ -24,7 +24,7 @@ Per ogni articolo vedi la foto, il titolo, la categoria e i numeri che contano (
 
 - **Modificare il titolo**: toccalo e scrivi come vuoi che appaia su Telegram (es. tradurlo in italiano).
 - **Inserire il prezzo**: solo il numero, l'euro viene aggiunto da solo. Puoi usare i decimali (es. `7,50`).
-- **Pubblica**: la foto con «titolo, prezzo€» arriva subito su Telegram e l'articolo passa tra i *Pubblicati*.
+- **Pubblica**: la foto con «titolo, prezzo€» arriva subito nella chat con @FlashShoppBot, inviata dal tuo account, e l'articolo passa tra i *Pubblicati*. Se Telegram non accetta l'invio, compare un avviso e l'articolo resta da valutare.
 - **Scarta**: l'articolo sparisce dalla lista. Se hai sbagliato, premi **Annulla** nel messaggio che compare.
 
 Tocca la foto per vederla ingrandita, oppure l'icona ↗ per aprire il modello originale su MakerWorld.
@@ -48,10 +48,11 @@ Cerca per parola, filtra per categoria (Casa, Cucina, Utensili, Gadget, Tech, De
 
 ## Accesso e dispositivi
 
-- **Il gestore** sceglie la sua password la prima volta che apre l'app e collega il bot Telegram. Da quel momento, su qualsiasi dispositivo, basta inserire la password.
-- **Il proprietario** ha una sua password personale che funziona sempre, anche se il gestore cambia la propria.
+- **Il gestore** sceglie la sua password la prima volta che apre l'app. Da quel momento, su qualsiasi dispositivo, basta inserire la password.
+- **Il proprietario** collega una volta il suo account Telegram dalle Impostazioni (numero, codice ricevuto su Telegram, eventuale password della verifica in due passaggi). Finché non è collegato, il gestore può vedere e scartare gli articoli ma «Pubblica» resta bloccato.
+- Il proprietario ha anche una sua password personale che funziona sempre, anche se il gestore cambia la propria.
 - **Tutto è sincronizzato**: se pubblichi dal telefono, l'articolo risulta pubblicato anche sul computer. L'app si aggiorna da sola ogni minuto.
-- Dalle **Impostazioni** (icona ⚙️) si sceglie la chat Telegram, si cambia il formato della didascalia, si cambia la password del gestore e si esce dal dispositivo.
+- Dalle **Impostazioni** (icona ⚙️) si vede se l'account Telegram è collegato, si cambia il formato della didascalia, si cambia la password del gestore e si esce dal dispositivo. Solo il proprietario può collegare o scollegare il suo account.
 
 ## Installala come app
 

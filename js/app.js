@@ -117,15 +117,13 @@ function render() {
 
 function renderBanner() {
   const banner = $('#setup-banner');
-  if (!session) { banner.hidden = true; return; }
-  if (!session.bot) {
-    $('#banner-title').textContent = 'Bot Telegram non collegato';
-    $('#banner-text').textContent = session.botError || 'Inserisci il token del bot nelle impostazioni.';
-  } else {
-    $('#banner-title').textContent = 'Scegli la chat Telegram';
-    $('#banner-text').textContent = `Il bot @${session.bot.username} è collegato: indica dove pubblicare i prodotti.`;
-  }
-  banner.hidden = Boolean(session.bot && session.chatId);
+  const owner = session?.role === 'owner';
+  banner.hidden = !session || Boolean(session.account?.linked);
+  $('#banner-setup').hidden = !owner;
+  $('#banner-title').textContent = owner ? 'Collega il tuo account Telegram' : 'In attesa del proprietario';
+  $('#banner-text').textContent = owner
+    ? 'Serve per inviare gli articoli a @FlashShoppBot dal tuo account.'
+    : 'Il proprietario deve collegare il suo account Telegram: fino ad allora «Pubblica» è bloccato.';
 }
 
 function renderCounts() {
@@ -301,9 +299,10 @@ async function onPublish(card, it) {
   const input = $('.price input', card);
   const price = formatPrice(input.value);
   if (!price) return shake($('.price', card));
-  if (session && (!session.bot || !session.chatId)) {
-    toast(session.bot ? 'Scegli prima la chat Telegram' : 'Bot Telegram non configurato', 'err');
-    return openSettings();
+  if (session && !session.account?.linked) {
+    toast('In attesa che il proprietario colleghi l\'account Telegram', 'err');
+    if (session.role === 'owner') openSettings();
+    return;
   }
   if (card.dataset.busy) return;
   const title = $('.card-title', card).value.trim() || it.title;
@@ -424,26 +423,26 @@ function toast(msg, type = 'ok', action) {
 
 /* -------------------------------------------------------------- settings */
 
-function renderBotStatus() {
+function renderAccount() {
+  const acc = session?.account || {};
+  const owner = session?.role === 'owner';
   const box = $('#bot-status');
-  if (!session) { box.innerHTML = ''; return; }
-  box.classList.toggle('err', !session.bot);
-  box.innerHTML = session.bot
-    ? `<span class="dot"></span><div><strong>@${esc(session.bot.username)} collegato</strong><small>Attivo su tutti i dispositivi</small></div>`
-    : `<span class="dot"></span><div><strong>Bot non collegato</strong><small>${esc(session.botError || '')}</small></div>`;
+  box.classList.toggle('err', !acc.linked);
+  box.innerHTML = acc.linked
+    ? `<span class="dot"></span><div><strong>Collegato${acc.name ? `: ${esc(acc.name)}` : ''}</strong><small>Gli articoli partono da questo account verso @FlashShoppBot</small></div>`
+    : `<span class="dot"></span><div><strong>Account Telegram non collegato</strong><small>${esc(acc.error || (owner ? 'Collegalo qui sotto per poter pubblicare.' : 'Solo il proprietario può collegarlo.'))}</small></div>`;
+  $('#tg-link').hidden = !owner || Boolean(acc.linked);
+  $('#tg-unlink').hidden = !owner || !acc.linked;
 }
 
 function openSettings() {
-  renderBotStatus();
-  $('#bot-token-field').hidden = Boolean(session?.botFromEnv);
-  $('#tg-token').value = '';
-  $('#new-pass').value = '';
+  renderAccount();
+  for (const id of ['#tg-code-field', '#tg-pw-field']) $(id).hidden = true;
+  for (const id of ['#tg-code', '#tg-pw', '#new-pass']) $(id).value = '';
   $('#role-info').textContent = session?.role === 'owner'
     ? 'Sei entrato con la password del proprietario.'
     : 'Sei entrato con la password del gestore.';
-  $('#tg-chat').value = session?.chatId || '';
   $('#tg-format').value = session?.format || '{titolo}, {prezzo}€';
-  $('#chat-list').hidden = true;
   $('#sheet-backdrop').hidden = false;
   $('#settings').hidden = false;
 }
@@ -468,7 +467,7 @@ async function withLoading(btn, fn) {
 }
 
 async function saveSettings() {
-  const { data } = await store.api('settings', { method: 'POST', body: { chatId: $('#tg-chat').value.trim(), format: $('#tg-format').value.trim() } });
+  const { data } = await store.api('settings', { method: 'POST', body: { format: $('#tg-format').value.trim() } });
   session = { ...session, ...data.settings };
   renderBanner();
 }
@@ -493,29 +492,35 @@ function bindSettings() {
     });
   };
 
-  $('#find-chat').onclick = (e) => withLoading(e.currentTarget, async () => {
-    const { data } = await store.api('chats');
-    const list = $('#chat-list');
-    list.hidden = false;
-    list.innerHTML = data.chats.length
-      ? data.chats.map((c) => `<button type="button" data-id="${esc(c.id)}"><strong>${esc(c.name)}</strong><small>${esc(c.type)} · ID ${esc(c.id)}</small></button>`).join('')
-      : `<p class="hint">Nessuna chat trovata. Apri <a href="https://t.me/${esc(data.bot.username)}" target="_blank" rel="noopener">@${esc(data.bot.username)}</a>, premi Avvia e scrivi un messaggio, poi riprova.</p>`;
-    $$('button', list).forEach((b) => (b.onclick = () => { $('#tg-chat').value = b.dataset.id; list.hidden = true; toast('Chat selezionata: premi Salva', 'ok'); }));
+  // Collegamento dell'account Telegram: numero → codice → (password 2FA).
+  const linkInput = { start: '#tg-phone', code: '#tg-code', password: '#tg-pw' };
+  $('#tg-link').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-acc]');
+    if (!b) return;
+    const action = b.dataset.acc;
+    withLoading(b, async () => {
+      const value = $(linkInput[action]).value.trim();
+      if (!value) throw new Error('Compila il campo prima di continuare.');
+      const res = await store.account(action, { [action === 'start' ? 'phone' : action]: value });
+      if (res.next === 'code') { $('#tg-code-field').hidden = false; $('#tg-code').focus(); toast('Codice inviato: controlla Telegram', 'info'); }
+      if (res.next === 'password') { $('#tg-pw-field').hidden = false; $('#tg-pw').focus(); }
+      if (res.linked) {
+        await loadSession();
+        renderAccount();
+        toast('Account Telegram collegato!', 'ok');
+      }
+    });
   });
 
-  $('#test-tg').onclick = (e) => withLoading(e.currentTarget, async () => {
-    await saveSettings();
-    await store.api('test', { method: 'POST' });
-    toast('Messaggio di prova inviato!', 'ok');
-  });
-
-  $('#save-token').onclick = (e) => withLoading(e.currentTarget, async () => {
-    const data = await store.saveBotToken($('#tg-token').value);
-    $('#tg-token').value = '';
-    await loadSession();
-    renderBotStatus();
-    toast(`Bot @${data.bot.username} collegato`, 'ok');
-  });
+  $('#tg-unlink').onclick = (e) => {
+    if (!confirm('Scollegare il tuo account Telegram? Nessuno potrà pubblicare finché non lo ricolleghi.')) return;
+    withLoading(e.currentTarget, async () => {
+      await store.account('logout');
+      await loadSession();
+      renderAccount();
+      toast('Account Telegram scollegato', 'info');
+    });
+  };
 
   $('#change-pass').onclick = (e) => withLoading(e.currentTarget, async () => {
     const pw = $('#new-pass').value;
@@ -535,7 +540,7 @@ function bindSettings() {
 
 /* ----------------------------------------------------------------- login */
 
-let loginMode = 'login'; // 'login' | 'setup' | 'bot'
+let loginMode = 'login'; // 'login' | 'setup'
 
 function openLoginOverlay() {
   const el = $('#login');
@@ -553,21 +558,16 @@ function closeLoginOverlay() {
   return new Promise((r) => setTimeout(() => { el.hidden = true; el.classList.remove('leaving'); r(); }, 520));
 }
 
-function setLoginMode(mode, botFromEnv = false) {
+function setLoginMode(mode) {
   loginMode = mode;
   const setup = mode === 'setup';
-  const bot = mode === 'bot';
-  $('#pass-fields').hidden = bot;
   $('#pass2-field').hidden = !setup;
-  $('#bot-field').hidden = !(setup || bot) || botFromEnv;
-  $('#login-switch').hidden = !(setup || bot);
-  $('#login-switch').textContent = bot ? 'Esci ed entra con un\'altra password' : 'Ho già una password';
+  $('#login-switch').hidden = !setup;
   $('#login-form').dataset.mode = mode;
-  $('#login-sub').textContent = setup ? 'Benvenuto! Crea la password del gestore e collega il bot'
-    : bot ? 'Ultimo passo: collega il bot Telegram' : '3D Print Shop Manager';
+  $('#login-sub').textContent = setup ? 'Benvenuto! Crea la password del gestore' : '3D Print Shop Manager';
   $('#login-pass-label').textContent = setup ? 'Nuova password (almeno 6 caratteri)' : 'Password';
   $('#login-pass').autocomplete = setup ? 'new-password' : 'current-password';
-  $('#login-btn').textContent = setup ? 'Crea password ed entra' : bot ? 'Collega il bot' : 'Entra';
+  $('#login-btn').textContent = setup ? 'Crea password ed entra' : 'Entra';
 }
 
 function clearLocalData() {
@@ -586,22 +586,12 @@ async function showLogin(msg = '') {
   $('#login-err').textContent = msg;
   try {
     const st = await store.authStatus();
-    setLoginMode(st.needsSetup ? 'setup' : 'login', st.botFromEnv);
+    setLoginMode(st.needsSetup ? 'setup' : 'login');
   } catch (e) {
     setLoginMode('login');
     $('#login-err').textContent = e.message;
   }
   setTimeout(() => $('#login-pass').focus(), 200);
-}
-
-/** Senza un bot Telegram funzionante non si può usare l'app. */
-function requireBot() {
-  if (session?.bot) return false;
-  openLoginOverlay();
-  setLoginMode('bot', session?.botFromEnv);
-  $('#login-err').textContent = session?.botError || '';
-  setTimeout(() => $('#login-bot').focus(), 200);
-  return true;
 }
 
 async function loadSession() {
@@ -611,10 +601,7 @@ async function loadSession() {
 }
 
 function bindLogin() {
-  $('#login-switch').onclick = async () => {
-    if (loginMode === 'bot') { await store.logout(); return showLogin(); }
-    setLoginMode('login');
-  };
+  $('#login-switch').onclick = () => setLoginMode('login');
   // Mostra/nascondi password.
   $('#login-form').addEventListener('click', (e) => {
     const b = e.target.closest('[data-eye]');
@@ -628,7 +615,6 @@ function bindLogin() {
     e.preventDefault();
     const btn = $('#login-btn');
     const pw = $('#login-pass').value;
-    const botToken = $('#login-bot').value.trim();
     const mode = loginMode;
     $('#login-err').textContent = '';
     btn.classList.add('loading');
@@ -636,17 +622,12 @@ function bindLogin() {
       if (mode === 'setup') {
         if (pw.length < 6) throw new Error('La password deve avere almeno 6 caratteri.');
         if (pw !== $('#login-pass2').value) throw new Error('Le due password non coincidono.');
-        if (!$('#bot-field').hidden && !botToken) throw new Error('Inserisci il token del bot Telegram per continuare.');
-        await store.setup(pw, botToken);
-      } else if (mode === 'bot') {
-        if (!botToken) throw new Error('Inserisci il token del bot Telegram per continuare.');
-        await store.saveBotToken(botToken);
+        await store.setup(pw);
       } else {
         if (!pw) throw new Error('Inserisci la password.');
         await store.login(pw);
       }
       await loadSession();
-      if (requireBot()) return;
       btn.classList.remove('loading');
       btn.classList.add('success');
       await fetchFeed().catch(() => {});
@@ -654,9 +635,9 @@ function bindLogin() {
       render();
       await closeLoginOverlay();
       btn.classList.remove('success');
-      for (const id of ['#login-pass', '#login-pass2', '#login-bot']) { $(id).value = ''; $(id).type = 'password'; }
-      if (mode !== 'login') toast(`Bot @${session.bot.username} collegato! Ora scegli la chat`, 'ok');
-      if (!session.chatId) openSettings();
+      for (const id of ['#login-pass', '#login-pass2']) { $(id).value = ''; $(id).type = 'password'; }
+      if (mode === 'setup') toast('Password creata!', 'ok');
+      if (!session.account?.linked && session.role === 'owner') openSettings();
     } catch (err) {
       if (err.status === 409) setLoginMode('login');
       $('#login-err').textContent = err.message;
@@ -805,7 +786,6 @@ async function boot() {
   render();
   try {
     await loadSession();
-    if (requireBot()) return;
     await sync();
   } catch (e) {
     if (e.status === 401) return showLogin();

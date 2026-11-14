@@ -1,29 +1,10 @@
-// Stato della connessione: ruolo, bot e chat configurati.
-import { json, getSettings, getBotToken } from '../../lib/server/store.js';
-import { call } from '../../lib/server/telegram.js';
+// Stato della connessione: ruolo, account Telegram collegato, formato della didascalia.
+import { json, getSettings } from '../../lib/server/store.js';
+import { sender } from '../../lib/server/sender.js';
 
 export async function onRequestGet({ env, data }) {
-  const settings = await getSettings(env);
-  const token = await getBotToken(env);
-  let bot = null;
-  let botError = null;
-  if (token) {
-    try {
-      const me = await call(token, 'getMe');
-      bot = { username: me.username, name: me.first_name };
-    } catch (e) {
-      botError = e.message;
-    }
-  } else {
-    botError = 'Inserisci il token del bot nelle impostazioni.';
-  }
-  return json({
-    ok: true,
-    role: data.session.role,
-    bot,
-    botError,
-    botFromEnv: Boolean(env.TELEGRAM_BOT_TOKEN),
-    chatId: settings.chatId,
-    format: settings.format,
-  });
+  const account = await sender(env, 'status').catch((e) => ({ linked: false, error: e.message }));
+  // Il vecchio token del bot non serve più: lo si elimina la prima volta che capita.
+  if (await env.KV.get('secret:botToken')) await env.KV.delete('secret:botToken');
+  return json({ ok: true, role: data.session.role, account, format: (await getSettings(env)).format });
 }

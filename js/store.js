@@ -53,8 +53,8 @@ export async function login(password) {
   setKey(data.token);
   return data;
 }
-export async function setup(password, botToken) {
-  const { data } = await api('auth/setup', { method: 'POST', body: { password, botToken } });
+export async function setup(password) {
+  const { data } = await api('auth/setup', { method: 'POST', body: { password } });
   setKey(data.token);
   return data;
 }
@@ -66,8 +66,8 @@ export async function changePassword(password) {
   const { data } = await api('password', { method: 'POST', body: { password } });
   if (data.token) setKey(data.token);
 }
-export async function saveBotToken(botToken) {
-  return (await api('bot', { method: 'POST', body: { botToken } })).data;
+export async function account(action, extra = {}) {
+  return (await api('account', { method: 'POST', body: { action, ...extra } })).data;
 }
 
 /* ---------- decisioni condivise ---------- */

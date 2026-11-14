@@ -3,5 +3,5 @@ import { json } from '../../../lib/server/store.js';
 import { needsSetup } from '../../../lib/server/auth.js';
 
 export async function onRequestGet({ env }) {
-  return json({ ok: true, needsSetup: await needsSetup(env), botFromEnv: Boolean(env.TELEGRAM_BOT_TOKEN) });
+  return json({ ok: true, needsSetup: await needsSetup(env) });
 }

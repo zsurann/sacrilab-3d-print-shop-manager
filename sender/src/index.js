@@ -1,10 +1,10 @@
-// PROTOTIPO: servizio di invio dall'account Telegram personale del proprietario.
-// Serve solo a verificare che il piano gratuito di Cloudflare regga (Worker + Durable Object + mtcute).
+// Servizio di invio: manda foto + didascalia a @FlashShoppBot dall'account Telegram personale del proprietario.
+// Chiamato solo dal sito (service binding «SENDER»), protetto da SENDER_KEY. La sessione resta qui, cifrata.
 import { DurableObject } from 'cloudflare:workers';
 import { TelegramClient, MemoryStorage, WebCryptoProvider, WebPlatform, InputMedia } from '@mtcute/web';
 import wasm from '@mtcute/wasm/mtcute.wasm';
 import { seal, open } from './secret-box.js';
-import PAGE from './page.html';
+import { explain } from './errors.js';
 
 const TARGET = 'FlashShoppBot';
 
@@ -15,6 +15,7 @@ class WorkerPlatform extends WebPlatform {
 }
 
 const json = (data, status = 200) => Response.json(data, { status });
+
 // Senza un limite, se Telegram non risponde la richiesta resterebbe appesa per sempre.
 const limit = () => AbortSignal.timeout(25000);
 
@@ -42,17 +43,16 @@ export class Sender extends DurableObject {
   async fetch(request) {
     const path = new URL(request.url).pathname;
     const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
-    const t0 = Date.now();
     try {
-      const tg = await this.client();
       if (path === '/api/status') {
-        if (!(await this.ctx.storage.get('linked'))) return json({ linked: false });
-        const me = await tg.getMe();
-        return json({ linked: true, name: me.displayName, ms: Date.now() - t0 });
+        // Senza contattare Telegram: lo stato salvato basta, una sessione revocata emerge al primo invio.
+        const linked = await this.ctx.storage.get('linked');
+        return json({ linked: Boolean(linked), name: linked?.name || null });
       }
+      const tg = await this.client();
       if (path === '/api/login/start') {
         const sent = await tg.sendCode({ phone: String(body.phone || ''), abortSignal: limit() });
-        if (!('phoneCodeHash' in sent)) { await this.linked(); return json({ linked: true }); }
+        if (!('phoneCodeHash' in sent)) return json(await this.linked(sent));
         await this.ctx.storage.put('login', { phone: String(body.phone), hash: sent.phoneCodeHash });
         await this.save(); // conserva la chiave usata per sendCode, nel caso il Durable Object venga riavviato
         return json({ next: 'code', delivery: sent.type });
@@ -61,23 +61,19 @@ export class Sender extends DurableObject {
         const login = await this.ctx.storage.get('login');
         if (!login) return json({ error: 'Prima inserisci il numero.' }, 400);
         try {
-          await tg.signIn({ phone: login.phone, phoneCodeHash: login.hash, phoneCode: String(body.code || ''), abortSignal: limit() });
+          return json(await this.linked(await tg.signIn({ phone: login.phone, phoneCodeHash: login.hash, phoneCode: String(body.code || ''), abortSignal: limit() })));
         } catch (e) {
           if (e?.text === 'SESSION_PASSWORD_NEEDED') { await this.save(); return json({ next: 'password' }); }
           throw e;
         }
-        await this.linked();
-        return json({ linked: true });
       }
       if (path === '/api/login/password') {
-        await tg.checkPassword({ password: String(body.password || ''), abortSignal: limit() });
-        await this.linked();
-        return json({ linked: true });
+        return json(await this.linked(await tg.checkPassword({ password: String(body.password || ''), abortSignal: limit() })));
       }
       if (path === '/api/send') {
-        if (!(await this.ctx.storage.get('linked'))) return json({ error: 'Account non collegato.' }, 409);
+        if (!(await this.ctx.storage.get('linked'))) return json({ error: 'In attesa che il proprietario colleghi l\'account Telegram.' }, 409);
         const msg = await tg.sendMedia(TARGET, InputMedia.photo(String(body.image), { caption: String(body.caption || '') }), { abortSignal: limit() });
-        return json({ sent: true, messageId: msg.id, ms: Date.now() - t0 });
+        return json({ sent: true, messageId: msg.id });
       }
       if (path === '/api/logout') {
         await tg.logOut().catch(() => {});
@@ -87,14 +83,18 @@ export class Sender extends DurableObject {
       }
       return json({ error: 'Percorso sconosciuto.' }, 404);
     } catch (e) {
-      return json({ error: e.message || String(e), ms: Date.now() - t0 }, 502);
+      const [status, error, unlink] = explain(e);
+      if (unlink) { await this.ctx.storage.deleteAll(); this.tg = null; }
+      return json({ error }, status);
     }
   }
 
-  async linked() {
+  async linked(user) {
     await this.save();
-    await this.ctx.storage.put('linked', true);
+    const info = { name: user?.displayName || null };
+    await this.ctx.storage.put('linked', info);
     await this.ctx.storage.delete('login');
+    return { linked: true, name: info.name };
   }
 }
 
@@ -110,7 +110,6 @@ async function authorized(request, env) {
 
 export default {
   async fetch(request, env) {
-    if (new URL(request.url).pathname === '/') return new Response(PAGE, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     for (const k of ['API_ID', 'API_HASH', 'SESSION_KEY', 'SENDER_KEY']) {
       if (!env[k]) return json({ error: `Manca il segreto ${k} nelle impostazioni del Worker.` }, 503);
     }
