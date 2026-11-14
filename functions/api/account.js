@@ -1,7 +1,7 @@
 // Collegamento dell'account Telegram del proprietario (solo con la password del proprietario).
 import { json, fail } from '../../lib/server/store.js';
 import { sender } from '../../lib/server/sender.js';
-import { releaseIfDue } from '../../lib/server/queue.js';
+import { markConfigured } from '../../lib/server/queue.js';
 import { getCatalog } from '../../lib/server/store.js';
 
 const ACTIONS = {
@@ -18,10 +18,6 @@ export async function onRequestPost({ request, env, data }) {
   if (!action) return fail(400, 'Azione non valida.');
   const [path, payload] = action(body);
   const result = await sender(env, path, payload);
-  if (result.linked && !(await env.KV.get('configured'))) {
-    // Configurazione completata: da qui partono gli articoli, i primi 5 subito.
-    await env.KV.put('configured', new Date().toISOString());
-    await releaseIfDue(env, await getCatalog(env, request), { force: true });
-  }
+  if (result.linked) await markConfigured(env, await getCatalog(env, request));
   return json({ ok: true, ...result });
 }
